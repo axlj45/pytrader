@@ -20,6 +20,8 @@ plotly = "^5.22.0"
 matplotlib = "^3.9.0"
 click = "^8.1.7"
 pytz = "^2024.1"
+alpaca-py = "^0.21.2"
+python-dotenv = "^1.0.1"
 
 
 [build-system]
