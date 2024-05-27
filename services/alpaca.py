@@ -6,8 +6,9 @@ from alpaca.trading.requests import (
     LimitOrderRequest,
     StopLossRequest,
 )
-from alpaca.trading.enums import OrderSide, QueryOrderStatus
-from alpaca.trading.enums import *
+from alpaca.trading.enums import OrderSide, QueryOrderStatus, TimeInForce, OrderClass
+
+from utils import localtime
 
 
 class AlpacaClient:
@@ -71,7 +72,8 @@ class AlpacaClient:
             today, today + datetime.timedelta(days=10)
         )
         if len(upcoming_trade_days) > 0:
-            return upcoming_trade_days[0]
+            timezone_aware_date = localtime.to_day(upcoming_trade_days[0])
+            return timezone_aware_date
         return None
 
     def buy_with_stop_loss(
