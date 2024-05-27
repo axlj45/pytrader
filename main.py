@@ -72,7 +72,7 @@ def rsi(live: bool):
             )
 
         if last_signal["action"] is not None:
-            key = f"{ticker}_{today}_RSI_{last_signal['action']}".lower()
+            key = f"{ticker}_{today.strftime('%Y-%m-%d')}_RSI_{last_signal['action']}".lower()
             print(key)
             pass
 
