@@ -7,6 +7,7 @@ from alpaca.trading.requests import (
     StopLossRequest,
 )
 from alpaca.trading.enums import OrderSide, QueryOrderStatus, TimeInForce, OrderClass
+from alpaca.common.exceptions import APIError
 
 from utils import localtime
 
@@ -14,6 +15,14 @@ from utils import localtime
 class AlpacaClient:
     def __init__(self, api_key, secret_key, paper=True):
         self.client = TradingClient(api_key, secret_key, paper=paper)
+
+    def account(self):
+        result = self.client.get_account()
+        disabled = (
+            result.account_blocked or result.trading_blocked
+        ) or not result.status == "ACTIVE"
+
+        return (not disabled, result)
 
     def close_order(self, order_id):
         """
@@ -47,6 +56,17 @@ class AlpacaClient:
         """
         return self.client.get_all_positions()
 
+    def get_position_for(self, symbol):
+        """
+        Returns a list of all open positions for a specific symbol.
+        """
+        try:
+            return self.client.get_open_position(symbol)
+        except APIError as e:
+            if e.code == 40410000: # Position not found
+                return None
+            raise e
+
     def get_open_market_days_since(
         self, since: datetime.date, till: datetime.date = datetime.date.today()
     ):
@@ -76,6 +96,13 @@ class AlpacaClient:
             return timezone_aware_date
         return None
 
+    def close_position(self, symbol):
+        """
+        Closes a position.
+        symbol: str - The symbol of the position
+        """
+        return self.client.close_position(symbol)
+    
     def buy_with_stop_loss(
         self,
         symbol: str,
