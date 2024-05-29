@@ -87,15 +87,15 @@ def rsi(live: bool):
             )
 
         elif last_signal["action"] == "Sell":
+            market_days = client.get_open_market_days_since(d)
             buy_signal = _df_row_to_signal(symbol, signal_data.iloc[-2])
-            buy_key = _get_trade_key(symbol, buy_signal)
+            buy_key = _get_trade_key(symbol, buy_signal).replace("hold", "buy")
             trade = db.get_trade(buy_key)
 
             if trade is None:
                 print(f"Trade not found for {buy_key}.")
                 continue
 
-            market_days = client.get_open_market_days_since(d)
             next_trade_day = client.get_next_trade_day()
 
             sell_signal = SignalModel.create_signal(
@@ -193,7 +193,7 @@ def _convert_signal_to_action(signal):
     today = localtime.today().date()
     days_old = (today - signal_date).days
 
-    if signal["RSI_Buy"] == True and days_old <= 4:  # noqa: E712
+    if signal["RSI_Buy"] == True and days_old <= 1:  # noqa: E712
         return "Buy"
     elif signal["RSI_Sell"] == True:  # noqa: E712
         return "Sell"
