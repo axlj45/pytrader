@@ -17,9 +17,10 @@ class TraderDatabase:
         initialize_app(cred)
         self.db = firestore.client()
 
-    def add_order(self, order_data):
+    def upsert_order(self, order_key, order_data):
         collection = self.db.collection(self._order_collection)
-        collection.add(order_data)
+        doc_ref = collection.document(order_key)
+        doc_ref.set(order_data)
 
     def get_order(self, order_id):
         """
@@ -63,6 +64,9 @@ class TraderDatabase:
             trades = self.db.collection(self._trade_collection)
             doc_ref = trades.document(trade_id)
             trade_doc = doc_ref.get().to_dict()
+
+            if trade_doc is None:
+                return None
 
             return TradeModel(
                 trade_id,

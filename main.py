@@ -1,4 +1,6 @@
 import os
+import signal as system_signal
+import sys
 
 import click
 from dotenv import load_dotenv
@@ -20,6 +22,7 @@ memory = Memory(os.path.join(os.getcwd(), ".cache", "rsi"), verbose=0)
 client = AlpacaClient(
     os.getenv("alpaca_api_key"), os.getenv("alpaca_secret_key"), paper=True
 )
+db = TraderDatabase()
 
 
 @click.group()
@@ -47,7 +50,6 @@ def rsi(live: bool):
     # signals_by_symbol = calc_bullish_rsi(filtered_data, data)
 
     signals_by_symbol = cached_rsi_signals()
-    db = TraderDatabase()
 
     for symbol in signals_by_symbol:
         signal_data = signals_by_symbol[symbol]
@@ -68,14 +70,13 @@ def rsi(live: bool):
             signal = SignalModel.create_signal(
                 symbol, key, "Buy", "RSI", last_signal["metadata"], next_trade_day
             )
-            trade = TradeModel.create_trade(symbol, key, "RSI", [])
-
             result = db.add_signal(signal)
 
             if result is None:
                 print(f"{key} already exists.")
                 continue
 
+            trade = TradeModel.create_trade(symbol, key, "RSI", [])
             db.add_trade(trade)
             db.add_signal_ref_to_trade(trade.id, signal.id)
 
@@ -90,25 +91,42 @@ def rsi(live: bool):
             market_days = client.get_open_market_days_since(d)
             buy_signal = _df_row_to_signal(symbol, signal_data.iloc[-2])
             buy_key = _get_trade_key(symbol, buy_signal).replace("hold", "buy")
+
             trade = db.get_trade(buy_key)
 
             if trade is None:
-                print(f"Trade not found for {buy_key}.")
+                print(f"Entry trade not found for {buy_key}.")
+                continue
+
+            open_signal = SignalModel.from_dict(
+                buy_signal, trade.signals[0].get().to_dict()
+            )
+            print(open_signal.symbol)
+            if open_signal is None:
+                print(f"Open signal not found for {buy_key}.")
+                continue
+
+            open_order = client.get_order_by_id(open_signal.orderId)
+            if open_order is None or open_order.status not in [
+                "filled",
+                "partially_filled",
+            ]:
+                print(f"Open order not found for {buy_key}.")
                 continue
 
             next_trade_day = client.get_next_trade_day()
 
-            sell_signal = SignalModel.create_signal(
+            close_signal = SignalModel.create_signal(
                 symbol, key, "Sell", "RSI", last_signal["metadata"], next_trade_day
             )
-            db.add_signal(sell_signal)
+            db.add_signal(close_signal)
 
             if result is None:
                 print(f"{key} already exists.")
                 continue
 
-            trade.signals.append(sell_signal.id)
-            db.add_signal_ref_to_trade(trade.id, sell_signal.id)
+            trade.signals.append(close_signal.id)
+            db.add_signal_ref_to_trade(trade.id, close_signal.id)
 
             print(
                 f"Sell Signal for {symbol} on {d} is {today - d} days old but {len(market_days)} market days old."
@@ -123,7 +141,6 @@ def process_signals():
     if not enabled:
         print("Account is not enabled for trading. Exiting.")
         return
-    db = TraderDatabase()
 
     account_value = float(account.portfolio_value)
     cash = float(account.non_marginable_buying_power)
@@ -133,6 +150,7 @@ def process_signals():
     print(f"Cash: {cash}")
 
     signals = db.get_pending_signals()
+    print(f"Processing {len(signals)} signals.")
 
     for signal in signals:
         symbol = signal.symbol
@@ -186,6 +204,33 @@ def process_signals():
                 signal.orderId = order.id
                 db.update_signal_order(signal.id, order.id)
                 print(f"Order placed for {symbol} with id {order.id}.")
+
+
+@cli.command()
+def monitor_orders():
+    """Monitor open orders and execute stop losses."""
+    enabled, account = client.account()
+    if not enabled:
+        print("Account is not enabled for trading. Exiting.")
+        return
+
+    def signal_handler(sig, frame):
+        print(f"Received shutdown event: {system_signal.Signals(sig).name}.")
+        client.close_stream()
+        print("Gracefully shutdown. Exiting")
+        sys.exit(0)
+
+    system_signal.signal(system_signal.SIGINT, signal_handler)
+    system_signal.signal(system_signal.SIGTERM, signal_handler)
+
+    print("Starting order stream.")
+    client.get_order_stream(_trade_event_handler)
+
+
+async def _trade_event_handler(event: str, order: dict):
+    ao_key = f"alpaca_{order['id']}"
+    db.upsert_order(ao_key, order)
+    print(f"{event}: {order['side']} {order['order_type']} order {order['symbol']}.")
 
 
 def _convert_signal_to_action(signal):
