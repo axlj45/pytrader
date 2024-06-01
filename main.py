@@ -2,30 +2,34 @@ import signal as system_signal
 import sys
 
 import click
-from model.signal import SignalModel
-from model.trade import TradeModel
 
-from services.alpaca import AlpacaClient
-from services.database import TraderDatabase
-from services.rsi_signal_provider import rsi_signals
-from utils import localtime
-from utils.config import TradeConfig
+from model import SignalModel, TradeModel
+from services import AlpacaClient, TraderDatabase, rsi_signals
+from utils import localtime, TradeConfig
 
 
 @click.group()
-def cli():
+@click.pass_context
+@click.option("--config", default=None, help="Path to configuration file.")
+@click.option("--live", is_flag=True, help="Execute against live account.")
+def cli(ctx: click.Context, config: str, live: bool):
+    ctx.ensure_object(dict)
+    cfg = TradeConfig(config)
+    ctx.obj["db"] = TraderDatabase(cfg)
+    ctx.obj["client"] = AlpacaClient(
+        cfg.alpaca_key, cfg.alpaca_secret, live or cfg.alpaca_paper
+    )
     pass
 
 
 @cli.command()
-@click.option("--live", is_flag=True, help="Execute against live account.")
+@click.pass_context
 @click.option("--refresh", is_flag=True, help="Force refresh of RSI signals.")
-def rsi(live: bool, refresh: bool):
+def rsi(ctx: click.Context, refresh: bool):
     """Calculate RSI signals for all tickers in the S&P 500."""
     signals_by_symbol = rsi_signals(refresh)
-    cfg = TradeConfig()
-    db = TraderDatabase(cfg)
-    client = AlpacaClient(cfg.alpaca_key, cfg.alpaca_secret, live or cfg.alpaca_paper)
+    client: AlpacaClient = ctx.obj["client"]
+    db: TraderDatabase = ctx.obj["db"]
 
     for symbol in signals_by_symbol:
         signal_data = signals_by_symbol[symbol]
@@ -68,7 +72,9 @@ def rsi(live: bool, refresh: bool):
             trade = db.get_trade(buy_key)
 
             if trade is None:
-                print(f"Close signal triggered for {symbol} but no opening trade could be located: {buy_key}.")
+                print(
+                    f"Close signal triggered for {symbol} but no opening trade could be located: {buy_key}."
+                )
                 continue
 
             open_signal = (
@@ -99,7 +105,7 @@ def rsi(live: bool, refresh: bool):
             result = db.add_signal(close_signal)
 
             if result is None:
-                print(f"SELL signal for {symbol} has already been triggered: {key}.")
+                print(f"Close signal for {symbol} has already been triggered: {key}.")
                 continue
 
             db.add_signal_ref_to_trade(trade.id, close_signal.id)
@@ -108,11 +114,11 @@ def rsi(live: bool, refresh: bool):
 
 
 @cli.command()
-def process_signals():
+@click.pass_context
+def process_signals(ctx: click.Context):
     """Process RSI signals and execute trades."""
-    cfg = TradeConfig()
-    client = AlpacaClient(cfg.alpaca_key, cfg.alpaca_secret, cfg.alpaca_paper)
-    db = TraderDatabase(cfg)
+    client: AlpacaClient = ctx.obj["client"]
+    db: TraderDatabase = ctx.obj["db"]
     enabled, account = client.account()
     if not enabled:
         print("Account is not enabled for trading. Exiting.")
@@ -165,26 +171,21 @@ def process_signals():
                 print(f"Order placed for {symbol} with id {order.id}.")
 
         elif signal.action == "Sell":
-            # if signal.orderId is None:
-            #     print(f"No order found for {symbol}.")
-            #     continue
-
-            # order = client.get_order_by_id(signal.orderId)
-            # if order is None:
-            #     print(f"Order {signal.orderId} not found.")
-            #     continue
-
-            print(f"Selling {symbol} at {signal.metadata['close']}.")
             order = client.close_position(symbol)
             if order is not None:
                 signal.orderId = order.id
                 db.update_signal_order(signal.id, order.id)
                 print(f"Order placed for {symbol} with id {order.id}.")
+            else:
+                print(f"Failed to place order for {symbol}. id: {signal.id}.")
 
 
 @cli.command()
-def monitor_orders():
+@click.pass_context
+def monitor_orders(ctx: click.Context):
     """Monitor open orders and execute stop losses."""
+    db: TraderDatabase = ctx.obj["db"]
+    client: AlpacaClient = ctx.obj["client"]
 
     async def _trade_event_handler(event: str, order: dict):
         ao_key = f"alpaca_{order['id']}"
@@ -193,9 +194,6 @@ def monitor_orders():
             f"{event}: {order['side']} {order['order_type']} order {order['symbol']}."
         )
 
-    cfg = TradeConfig()
-    db = TraderDatabase(cfg)
-    client = AlpacaClient(cfg.alpaca_key, cfg.alpaca_secret, cfg.alpaca_paper)
     enabled, account = client.account()
     if not enabled:
         print("Account is not enabled for trading. Exiting.")
@@ -246,4 +244,4 @@ def _get_trade_key(symbol, signal):
 
 
 if __name__ == "__main__":
-    cli()
+    cli(obj={})
