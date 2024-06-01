@@ -1,10 +1,11 @@
-import os
 from firebase_admin import firestore, credentials, initialize_app
 from google.cloud.firestore_v1.base_query import FieldFilter
+from google.cloud.firestore_v1.document import DocumentReference
 from model.signal import SignalModel
 from utils import localtime
 
 from model.trade import TradeModel
+from utils.config import TradeConfig
 
 
 class TraderDatabase:
@@ -12,8 +13,8 @@ class TraderDatabase:
     _signals_collection = "signals"
     _trade_collection = "trades"
 
-    def __init__(self):
-        cred = credentials.Certificate(os.getenv("firebase_creds"))
+    def __init__(self, cfg: TradeConfig = None):
+        cred = credentials.Certificate(cfg.db_creds_path)
         initialize_app(cred)
         self.db = firestore.client()
 
@@ -68,12 +69,22 @@ class TraderDatabase:
             if trade_doc is None:
                 return None
 
+            if "signals" not in trade_doc:
+                trade_doc["signals"] = []
+            resolved_signals = []
+
+            for signal in trade_doc["signals"]:
+                if isinstance(signal, DocumentReference):
+                    doc = signal.get().to_dict()
+                    resolved_signals.append(SignalModel.from_dict(signal.id, doc))
+
             return TradeModel(
                 trade_id,
                 trade_doc["symbol"],
                 trade_doc["timestamp"],
                 trade_doc["strategy"],
                 trade_doc["signals"],
+                resolved_signals,
             )
         except Exception as e:
             print(e)
@@ -147,7 +158,7 @@ class TraderDatabase:
                 signal_doc_ref["executeOn"],
                 signal_doc_ref["orderId"],
             )
-        except firestore.exceptions.NotFound:
+        except Exception:
             return None
 
     def get_pending_signals(self) -> list[SignalModel]:

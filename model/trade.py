@@ -1,6 +1,8 @@
 from datetime import datetime
 import pytz
 
+from model.signal import SignalModel
+
 
 class TradeModel:
     def __init__(
@@ -10,12 +12,14 @@ class TradeModel:
         timestamp: datetime,
         strategy: str,
         signals: list[str] | None = None,
+        resolved_signals: list[SignalModel] | None = None,
     ):
         self.id = id
         self.symbol = symbol
         self.timestamp = timestamp
         self.strategy = strategy
         self.signals = signals
+        self.resolved_signals = resolved_signals
 
     def to_dict(self):
         result = {

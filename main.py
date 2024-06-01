@@ -1,28 +1,15 @@
-import os
 import signal as system_signal
 import sys
 
 import click
-from dotenv import load_dotenv
-from joblib import Memory
-
-
 from model.signal import SignalModel
 from model.trade import TradeModel
-from services import get_adjusted_market_data, get_tickers
-from filters import filter_by_dollar_vol
-from algos import calculate_signals as calc_bullish_rsi
+
 from services.alpaca import AlpacaClient
 from services.database import TraderDatabase
+from services.rsi_signal_provider import rsi_signals
 from utils import localtime
-
-
-load_dotenv()
-memory = Memory(os.path.join(os.getcwd(), ".cache", "rsi"), verbose=0)
-client = AlpacaClient(
-    os.getenv("alpaca_api_key"), os.getenv("alpaca_secret_key"), paper=True
-)
-db = TraderDatabase()
+from utils.config import TradeConfig
 
 
 @click.group()
@@ -30,31 +17,18 @@ def cli():
     pass
 
 
-@memory.cache
-def cached_rsi_signals():
-    """Temporary to speed up debugging."""
-    tickers = get_tickers()
-    data = get_adjusted_market_data(tickers)
-    filtered_data = filter_by_dollar_vol(data)
-    signals = calc_bullish_rsi(filtered_data, data)
-    return signals
-
-
 @cli.command()
 @click.option("--live", is_flag=True, help="Execute against live account.")
-def rsi(live: bool):
+@click.option("--refresh", is_flag=True, help="Force refresh of RSI signals.")
+def rsi(live: bool, refresh: bool):
     """Calculate RSI signals for all tickers in the S&P 500."""
-    # tickers = get_tickers()
-    # data = get_adjusted_market_data(tickers)
-    # filtered_data = filter_by_dollar_vol(data)
-    # signals_by_symbol = calc_bullish_rsi(filtered_data, data)
-
-    signals_by_symbol = cached_rsi_signals()
+    signals_by_symbol = rsi_signals(refresh)
+    cfg = TradeConfig()
+    db = TraderDatabase(cfg)
+    client = AlpacaClient(cfg.alpaca_key, cfg.alpaca_secret, live or cfg.alpaca_paper)
 
     for symbol in signals_by_symbol:
         signal_data = signals_by_symbol[symbol]
-        # get the last signal from pandas series
-
         last_signal = _df_row_to_signal(symbol, signal_data.iloc[-1])
 
         d = last_signal["date"]
@@ -66,14 +40,13 @@ def rsi(live: bool):
             market_days = client.get_open_market_days_since(d)
             next_trade_day = client.get_next_trade_day()
 
-            # create trade and store in db
             signal = SignalModel.create_signal(
                 symbol, key, "Buy", "RSI", last_signal["metadata"], next_trade_day
             )
             result = db.add_signal(signal)
 
             if result is None:
-                print(f"{key} already exists.")
+                print(f"BUY signal for {symbol} has already been triggered: {key}.")
                 continue
 
             trade = TradeModel.create_trade(symbol, key, "RSI", [])
@@ -95,15 +68,18 @@ def rsi(live: bool):
             trade = db.get_trade(buy_key)
 
             if trade is None:
-                print(f"Entry trade not found for {buy_key}.")
+                print(f"Close signal triggered for {symbol} but no opening trade could be located: {buy_key}.")
                 continue
 
-            open_signal = SignalModel.from_dict(
-                buy_signal, trade.signals[0].get().to_dict()
+            open_signal = (
+                trade.resolved_signals[0]
+                if len(trade.resolved_signals or []) > 0
+                else None
             )
-            print(open_signal.symbol)
+
             if open_signal is None:
-                print(f"Open signal not found for {buy_key}.")
+                msg = f"Close signal triggered for {symbol} but no opening signal could be found for {buy_key}."
+                print(msg)
                 continue
 
             open_order = client.get_order_by_id(open_signal.orderId)
@@ -111,7 +87,8 @@ def rsi(live: bool):
                 "filled",
                 "partially_filled",
             ]:
-                print(f"Open order not found for {buy_key}.")
+                msg = f"Close signal triggered for {symbol} but no filled orders could be found for {buy_key}."
+                print(msg)
                 continue
 
             next_trade_day = client.get_next_trade_day()
@@ -119,24 +96,23 @@ def rsi(live: bool):
             close_signal = SignalModel.create_signal(
                 symbol, key, "Sell", "RSI", last_signal["metadata"], next_trade_day
             )
-            db.add_signal(close_signal)
+            result = db.add_signal(close_signal)
 
             if result is None:
-                print(f"{key} already exists.")
+                print(f"SELL signal for {symbol} has already been triggered: {key}.")
                 continue
 
-            trade.signals.append(close_signal.id)
             db.add_signal_ref_to_trade(trade.id, close_signal.id)
 
-            print(
-                f"Sell Signal for {symbol} on {d} is {today - d} days old but {len(market_days)} market days old."
-            )
+            print(f"Close Signal for {symbol}")
 
 
 @cli.command()
 def process_signals():
     """Process RSI signals and execute trades."""
-
+    cfg = TradeConfig()
+    client = AlpacaClient(cfg.alpaca_key, cfg.alpaca_secret, cfg.alpaca_paper)
+    db = TraderDatabase(cfg)
     enabled, account = client.account()
     if not enabled:
         print("Account is not enabled for trading. Exiting.")
@@ -209,6 +185,17 @@ def process_signals():
 @cli.command()
 def monitor_orders():
     """Monitor open orders and execute stop losses."""
+
+    async def _trade_event_handler(event: str, order: dict):
+        ao_key = f"alpaca_{order['id']}"
+        db.upsert_order(ao_key, order)
+        print(
+            f"{event}: {order['side']} {order['order_type']} order {order['symbol']}."
+        )
+
+    cfg = TradeConfig()
+    db = TraderDatabase(cfg)
+    client = AlpacaClient(cfg.alpaca_key, cfg.alpaca_secret, cfg.alpaca_paper)
     enabled, account = client.account()
     if not enabled:
         print("Account is not enabled for trading. Exiting.")
@@ -225,12 +212,6 @@ def monitor_orders():
 
     print("Starting order stream.")
     client.get_order_stream(_trade_event_handler)
-
-
-async def _trade_event_handler(event: str, order: dict):
-    ao_key = f"alpaca_{order['id']}"
-    db.upsert_order(ao_key, order)
-    print(f"{event}: {order['side']} {order['order_type']} order {order['symbol']}.")
 
 
 def _convert_signal_to_action(signal):
