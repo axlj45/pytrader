@@ -174,13 +174,14 @@ class AlpacaClient:
         """
         Returns the next open market day.
         """
-        today = datetime.date.today()
+        today = localtime.today()
+
         upcoming_trade_days = self.get_open_market_days_since(
-            today, today + datetime.timedelta(days=10)
+            today.date(), today.date() + datetime.timedelta(days=10)
         )
         if len(upcoming_trade_days) > 1:
             timezone_aware_date = localtime.to_day(upcoming_trade_days[0])
-            if timezone_aware_date.date() == today:
+            if timezone_aware_date.date() == today.date() and today.hour > 15:
                 timezone_aware_date = localtime.to_day(upcoming_trade_days[1])
             return timezone_aware_date
         return None
