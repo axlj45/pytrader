@@ -1,3 +1,4 @@
+import logging
 import signal as system_signal
 import sys
 
@@ -10,9 +11,36 @@ from utils import localtime, TradeConfig
 
 @click.group()
 @click.pass_context
-@click.option("--config", default=None, help="Path to configuration file.")
-@click.option("--live", is_flag=True, help="Execute against live account.")
-def cli(ctx: click.Context, config: str, live: bool):
+@click.option("-c", "--config", default=None, help="Path to configuration file.")
+@click.option("-l", "--live", is_flag=True, help="Execute against live account.")
+@click.option("--log-path", default="pytrader.log", help="Path to write log file.")
+@click.option(
+    "-v",
+    "--log-level",
+    type=click.Choice(
+        [
+            "DEBUG",
+            "INFO",
+            "WARNING",
+            "ERROR",
+            "CRITICAL",
+            "FATAL",
+        ],
+        case_sensitive=False,
+    ),
+    default="INFO",
+    show_default=True,
+    help="Set log level",
+)
+def cli(ctx: click.Context, config: str, live: bool, log_path: str, log_level: str):
+    numeric_level = getattr(logging, log_level.upper(), None)
+
+    logging.basicConfig(
+        level=numeric_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler(log_path), logging.StreamHandler()],
+    )
+
     ctx.ensure_object(dict)
     cfg = TradeConfig(config)
     ctx.obj["db"] = TraderDatabase(cfg)
@@ -30,7 +58,7 @@ def rsi(ctx: click.Context, refresh: bool):
     signals_by_symbol = rsi_signals(refresh)
     client: AlpacaClient = ctx.obj["client"]
     db: TraderDatabase = ctx.obj["db"]
-
+    l = logging.getLogger("pytrader.signals.rsi")
     for symbol in signals_by_symbol:
         signal_data = signals_by_symbol[symbol]
         last_signal = _df_row_to_signal(symbol, signal_data.iloc[-1])
@@ -50,17 +78,17 @@ def rsi(ctx: click.Context, refresh: bool):
             result = db.add_signal(signal)
 
             if result is None:
-                print(f"BUY signal for {symbol} has already been triggered: {key}.")
+                l.warn(f"BUY signal for {symbol} has already been triggered: {key}.")
                 continue
 
             trade = TradeModel.create_trade(symbol, key, "RSI", [])
             db.add_trade(trade)
             db.add_signal_ref_to_trade(trade.id, signal.id)
 
-            print(
+            l.debug(
                 f"Buy Signal for {symbol} on {d} is {(today - d).days} days old but {len(market_days)} market days old."
             )
-            print(
+            l.debug(
                 f"Next trade day is {next_trade_day} which is {(next_trade_day - today).days} days away."
             )
 
@@ -72,7 +100,7 @@ def rsi(ctx: click.Context, refresh: bool):
             trade = db.get_trade(buy_key)
 
             if trade is None:
-                print(
+                l.warn(
                     f"Close signal triggered for {symbol} but no opening trade could be located: {buy_key}."
                 )
                 continue
@@ -85,7 +113,7 @@ def rsi(ctx: click.Context, refresh: bool):
 
             if open_signal is None:
                 msg = f"Close signal triggered for {symbol} but no opening signal could be found for {buy_key}."
-                print(msg)
+                l.warning(msg)
                 continue
 
             open_order = client.get_order_by_id(open_signal.orderId)
@@ -94,7 +122,7 @@ def rsi(ctx: click.Context, refresh: bool):
                 "partially_filled",
             ]:
                 msg = f"Close signal triggered for {symbol} but no filled orders could be found for {buy_key}."
-                print(msg)
+                l.warn(msg)
                 continue
 
             next_trade_day = client.get_next_trade_day()
@@ -105,12 +133,14 @@ def rsi(ctx: click.Context, refresh: bool):
             result = db.add_signal(close_signal)
 
             if result is None:
-                print(f"Close signal for {symbol} has already been triggered: {key}.")
+                l.warning(
+                    f"Close signal for {symbol} has already been triggered: {key}."
+                )
                 continue
 
             db.add_signal_ref_to_trade(trade.id, close_signal.id)
 
-            print(f"Close Signal for {symbol}")
+            l.info(f"Close Signal for {symbol}")
 
 
 @cli.command()
@@ -119,27 +149,28 @@ def process_signals(ctx: click.Context):
     """Process RSI signals and execute trades."""
     client: AlpacaClient = ctx.obj["client"]
     db: TraderDatabase = ctx.obj["db"]
+    l = logging.getLogger("pytrader.signal.processor")
     enabled, account = client.account()
     if not enabled:
-        print("Account is not enabled for trading. Exiting.")
+        l.error("Account is not enabled for trading. Exiting.")
         return
 
     account_value = float(account.portfolio_value)
     cash = float(account.non_marginable_buying_power)
     max_trade_value = account_value * 0.05
-
-    print(f"Account Value: {account_value}")
-    print(f"Cash: {cash}")
+    l.info("Beginning signal processing")
+    l.debug(f"Account Value: {account_value}")
+    l.debug(f"Cash: {cash}")
 
     signals = db.get_pending_signals()
-    print(f"Processing {len(signals)} signals.")
+    l.info(f"Processing {len(signals)} signals.")
 
     for signal in signals:
         symbol = signal.symbol
 
         if signal.action == "Buy":
             if cash < max_trade_value:
-                print(f"Insufficient cash to buy {symbol}.")
+                l.warning(f"Insufficient cash to buy {symbol}.")
                 continue
 
             last_close_price = signal.metadata["close"]
@@ -154,30 +185,30 @@ def process_signals(ctx: click.Context):
                     position.qty
                 )
 
-            print(f"Existing cost basis for {symbol}: {existing_cost_basis}")
+            l.debug(f"Existing cost basis for {symbol}: {existing_cost_basis}")
             available_symbol_funds = max_trade_value - existing_cost_basis
 
             qty = int(available_symbol_funds / last_close_price)
             if qty == 0:
-                print(f"Insufficient funds to buy {symbol}.")
+                l.warning(f"Insufficient funds to buy {symbol}.")
                 continue
 
-            print(f"Buying {qty} shares of {symbol} at {last_open_price}.")
+            l.info(f"Buying {qty} shares of {symbol} at {last_open_price}.")
 
             order = client.buy_with_stop_loss(symbol, qty, last_open_price, stop_price)
             if order is not None:
                 signal.orderId = order.id
                 db.update_signal_order(signal.id, order.id)
-                print(f"Order placed for {symbol} with id {order.id}.")
+                l.info(f"Order placed for {symbol} with id {order.id}.")
 
         elif signal.action == "Sell":
             order = client.close_position(symbol)
             if order is not None:
                 signal.orderId = order.id
                 db.update_signal_order(signal.id, order.id)
-                print(f"Order placed for {symbol} with id {order.id}.")
+                l.info(f"Sell order placed for {symbol} with id {order.id}.")
             else:
-                print(f"Failed to place order for {symbol}. id: {signal.id}.")
+                l.warning(f"Failed to place order for {symbol}. id: {signal.id}.")
 
 
 @cli.command()
@@ -186,29 +217,30 @@ def monitor_orders(ctx: click.Context):
     """Monitor open orders and execute stop losses."""
     db: TraderDatabase = ctx.obj["db"]
     client: AlpacaClient = ctx.obj["client"]
+    l = logging.getLogger("pytrader.broker.order_monitor")
 
     async def _trade_event_handler(event: str, order: dict):
         ao_key = f"alpaca_{order['id']}"
         db.upsert_order(ao_key, order)
-        print(
+        l.info(
             f"{event}: {order['side']} {order['order_type']} order {order['symbol']}."
         )
 
     enabled, account = client.account()
     if not enabled:
-        print("Account is not enabled for trading. Exiting.")
-        return
+        l.error("Account is not enabled for trading. Exiting.")
+        return -1
 
     def signal_handler(sig, frame):
-        print(f"Received shutdown event: {system_signal.Signals(sig).name}.")
+        l.info(f"Received shutdown event: {system_signal.Signals(sig).name}.")
         client.close_stream()
-        print("Gracefully shutdown. Exiting")
+        l.info("Gracefully shutdown. Exiting")
         sys.exit(0)
 
     system_signal.signal(system_signal.SIGINT, signal_handler)
     system_signal.signal(system_signal.SIGTERM, signal_handler)
 
-    print("Starting order stream.")
+    l.info("Starting order stream.")
     client.get_order_stream(_trade_event_handler)
 
 

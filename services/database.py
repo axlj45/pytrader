@@ -1,3 +1,4 @@
+import logging as l
 from firebase_admin import firestore, credentials, initialize_app
 from google.cloud.firestore_v1.base_query import FieldFilter
 from google.cloud.firestore_v1.document import DocumentReference
@@ -87,7 +88,7 @@ class TraderDatabase:
                 resolved_signals,
             )
         except Exception as e:
-            print(e)
+            l.error(e)
             return None
 
     def update_trade(self, trade_id: str, trade_data: dict):

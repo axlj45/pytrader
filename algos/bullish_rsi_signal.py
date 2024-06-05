@@ -1,4 +1,4 @@
-import math
+import logging as l
 import datetime
 import pandas as pd
 
@@ -106,9 +106,9 @@ def calculate_signals(symbol_data: pd.DataFrame, all_tickers_df: pd.DataFrame):
                 now = datetime.datetime.now().date()
                 isWithinDays = (now - d).days <= 10
                 if isWithinDays:
-                    print(f"{symbol}: {(d - now).days}: {d}")
+                    l.info(f"{symbol}: {(d - now).days}: {d}")
                     buys[symbol] = filtered_df
         except Exception as ex:
-            print(f"{symbol}: {ex}")
+            l.warning(f"{symbol}: {ex}")
 
     return buys
