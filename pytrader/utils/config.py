@@ -6,7 +6,7 @@ class TradeConfig:
     def __init__(self, dot_env_path: str = None):
         if not load_dotenv(dot_env_path):
             raise ValueError(
-                f"Unable to load configuration file: ${dot_env_path or '.env'}"
+                f"Unable to load configuration file: {dot_env_path or '.env'}"
             )
 
         self.alpaca_key = os.getenv("alpaca_api_key")

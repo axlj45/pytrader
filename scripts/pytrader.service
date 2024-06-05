@@ -1,0 +1,13 @@
+[Unit]
+Description=Pytrader Order Monitoring Service
+After=network.target
+
+[Service]
+User=pytrader
+Group=pytrader
+ExecStart=/opt/pytrader/monitor.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
