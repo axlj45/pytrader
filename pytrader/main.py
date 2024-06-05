@@ -8,7 +8,6 @@ from model import SignalModel, TradeModel
 from services import AlpacaClient, TraderDatabase, rsi_signals
 from utils import localtime, TradeConfig
 
-
 @click.group()
 @click.pass_context
 @click.option("-c", "--config", default=None, help="Path to configuration file.")
