@@ -1,8 +1,8 @@
 import os
 
-from services import get_adjusted_market_data, get_tickers
-from filters import filter_by_dollar_vol
-from algos import calculate_signals as calc_bullish_rsi
+from pytrader.services import get_adjusted_market_data, get_tickers
+from pytrader.filters import filter_by_dollar_vol
+from pytrader.algos import calculate_signals as calc_bullish_rsi
 from joblib import Memory
 
 memory = Memory(os.path.join(os.getcwd(), ".cache", "rsi"), verbose=0)

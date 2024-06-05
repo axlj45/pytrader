@@ -13,7 +13,7 @@ from alpaca.trading.requests import (
 from alpaca.trading.enums import OrderSide, QueryOrderStatus, TimeInForce, OrderClass
 from alpaca.common.exceptions import APIError
 
-from utils import localtime
+from pytrader.utils import localtime
 
 
 class AlpacaClient:

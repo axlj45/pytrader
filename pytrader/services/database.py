@@ -2,11 +2,9 @@ import logging as l
 from firebase_admin import firestore, credentials, initialize_app
 from google.cloud.firestore_v1.base_query import FieldFilter
 from google.cloud.firestore_v1.document import DocumentReference
-from model.signal import SignalModel
-from utils import localtime
 
-from model.trade import TradeModel
-from utils.config import TradeConfig
+from pytrader.model import TradeModel, SignalModel
+from pytrader.utils import localtime, TradeConfig
 
 
 class TraderDatabase:

@@ -1,5 +1,5 @@
 from datetime import datetime
-from utils import localtime
+from pytrader.utils import localtime
 
 
 class SignalModel:

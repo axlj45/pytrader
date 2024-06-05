@@ -4,9 +4,9 @@ import sys
 
 import click
 
-from model import SignalModel, TradeModel
-from services import AlpacaClient, TraderDatabase, rsi_signals
-from utils import localtime, TradeConfig
+from pytrader.model import SignalModel, TradeModel
+from pytrader.services import AlpacaClient, TraderDatabase, rsi_signals
+from pytrader.utils import localtime, TradeConfig
 
 @click.group()
 @click.pass_context

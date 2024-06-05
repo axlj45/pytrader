@@ -1,7 +1,7 @@
 from datetime import datetime
 import pytz
 
-from model.signal import SignalModel
+from pytrader.model import SignalModel
 
 
 class TradeModel:
