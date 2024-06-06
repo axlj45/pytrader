@@ -8,6 +8,14 @@ A simple 3-part CLI for executing on a single trading strategy.
 
 ## Usage
 
+1. Create a virtual environment: `python -m venv .pytrader`
+2. Activate the virtual vironment: `source $(pwd)/.pytrader/bin/activste`
+3. Install poetry: `pip install poetry`
+4. Install app dependencies: `poetry install`
+5. Copy `scripts/example.env` to a safe place and update its values
+6. Execute pytrader: `python pytrader/main.py` or `poetry run pytrader`
+
+
 ### Signal Scanner
 ```bash
 Usage: main.py rsi [OPTIONS]

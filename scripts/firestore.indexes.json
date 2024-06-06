@@ -1,0 +1,80 @@
+{
+    "indexes": [
+      {
+        "collectionGroup": "orders",
+        "queryScope": "COLLECTION",
+        "fields": [
+          {
+            "fieldPath": "order_class",
+            "order": "ASCENDING"
+          },
+          {
+            "fieldPath": "qty",
+            "order": "ASCENDING"
+          },
+          {
+            "fieldPath": "client_order_id",
+            "order": "ASCENDING"
+          }
+        ]
+      },
+      {
+        "collectionGroup": "orders",
+        "queryScope": "COLLECTION",
+        "fields": [
+          {
+            "fieldPath": "qty",
+            "order": "ASCENDING"
+          },
+          {
+            "fieldPath": "created_at",
+            "order": "ASCENDING"
+          }
+        ]
+      },
+      {
+        "collectionGroup": "orders",
+        "queryScope": "COLLECTION",
+        "fields": [
+          {
+            "fieldPath": "qty",
+            "order": "ASCENDING"
+          },
+          {
+            "fieldPath": "created_at",
+            "order": "DESCENDING"
+          }
+        ]
+      },
+      {
+        "collectionGroup": "signals",
+        "queryScope": "COLLECTION",
+        "fields": [
+          {
+            "fieldPath": "orderId",
+            "order": "ASCENDING"
+          },
+          {
+            "fieldPath": "executeOn",
+            "order": "ASCENDING"
+          }
+        ]
+      },
+      {
+        "collectionGroup": "trades",
+        "queryScope": "COLLECTION",
+        "fields": [
+          {
+            "fieldPath": "orderId",
+            "order": "ASCENDING"
+          },
+          {
+            "fieldPath": "executeOn",
+            "order": "ASCENDING"
+          }
+        ]
+      }
+    ],
+    "fieldOverrides": []
+  }
+  
