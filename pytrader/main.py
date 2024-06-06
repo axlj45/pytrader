@@ -7,6 +7,7 @@ import click
 from pytrader.model import SignalModel, TradeModel
 from pytrader.services import AlpacaClient, TraderDatabase, rsi_signals
 from pytrader.utils import localtime, TradeConfig
+from pytrader.utils.need_something_better import _df_row_to_signal, _get_trade_key
 
 
 @click.group()
@@ -245,37 +246,6 @@ def monitor_orders(ctx: click.Context):
 
     log.info("Starting order stream.")
     client.get_order_stream(_trade_event_handler)
-
-
-def _convert_signal_to_action(signal):
-    signal_date = localtime.localize_to_et(signal.name).date()
-    today = localtime.today().date()
-    days_old = (today - signal_date).days
-
-    if signal["RSI_Buy"] == True and days_old <= 1:  # noqa: E712
-        return "Buy"
-    elif signal["RSI_Sell"] == True:  # noqa: E712
-        return "Sell"
-    else:
-        return "Hold"
-
-
-def _df_row_to_signal(symbol, row):
-    signal = {}
-    signal["date"] = localtime.to_day(row.name)
-    signal["symbol"] = symbol
-    signal["action"] = _convert_signal_to_action(row)
-
-    signal["metadata"] = {}
-    signal["metadata"]["open"] = round(row["open"], 4)
-    signal["metadata"]["close"] = round(row["close"], 4)
-    signal["metadata"]["rsi"] = round(row["RSI"], 2)
-    return signal
-
-
-def _get_trade_key(symbol, signal):
-    d = signal["date"]
-    return f"{symbol}_{d.strftime('%Y-%m-%d')}_RSI_{signal['action']}".lower()
 
 
 if __name__ == "__main__":
