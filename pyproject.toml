@@ -24,6 +24,9 @@ alpaca-py = "^0.21.2"
 python-dotenv = "^1.0.1"
 firebase-admin = "^6.5.0"
 
+[tool.poetry.dev-dependencies]
+notebook = "7.2.1"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
