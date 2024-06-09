@@ -24,6 +24,7 @@ class SignalModel:
             "executeOn": self.executeOn,
             "orderId": self.orderId,
             "metadata": self.metadata or {},
+            "resolvedOrder": self.resolvedOrder or {},
         }
         return result
 

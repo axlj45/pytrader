@@ -129,7 +129,7 @@ class AlpacaClient:
         Returns information about a specific order.
         order_id: str - The ID of the order
         """
-        return self.client.get_order_by_id(order_id)
+        return self._order_to_dict(self.client.get_order_by_id(order_id))
 
     def get_open_orders(self):
         """

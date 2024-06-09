@@ -247,12 +247,57 @@ def monitor_orders(ctx: click.Context):
     log.info("Starting order stream.")
     client.get_order_stream(_trade_event_handler)
 
+
 @cli.command()
 @click.pass_context
 def complete_the_trade(ctx: click.Context):
     db: TraderDatabase = ctx.obj["db"]
-    trade = db.get_trade("mrk_2024-05-30_rsi_buy")
-    print(trade)
+    broker = ctx.obj["client"]
+    trades = db.get_trades()
+    for tradeDoc in trades:
+        trade = db.get_trade(tradeDoc.id)
+
+        trade_incomplete = len(trade.resolved_signals) < 2
+        if trade_incomplete:
+            print(f"Ignoring trade {trade.id}. it only has 1 signal")
+            continue
+
+        for signal in trade.resolved_signals:
+            if (
+                signal.resolvedOrder is None
+                or signal.resolvedOrder["status"] != "FILLED"
+            ):
+                broker_order = broker.get_order_by_id(signal.orderId)
+                if broker_order is not None:
+                    signal.resolvedOrder = broker_order
+                    ao_key = f"alpaca_{signal.orderId}"
+                    db.upsert_order(ao_key, broker_order)
+                else:
+                    trade_incomplete = True
+                    break
+
+        if trade_incomplete:
+            print(f"Ignoring trade {trade.id} as it is incomplete.")
+            continue
+
+        open_order = trade.resolved_signals[0].resolvedOrder
+        close_order = trade.resolved_signals[-1].resolvedOrder
+
+        open_qty = float(open_order["qty"])
+        close_qty = float(close_order["qty"])
+
+        if open_qty - close_qty != 0:
+            print(f"Ignoring trade {trade.id}, quantities don't match. Open qty: {open_qty} Close qty: {close_qty}")
+            continue
+
+        cost_basis = float(open_order["filled_avg_price"])
+        sale_price = float(close_order["filled_avg_price"])
+        pct_change = round((sale_price - cost_basis) / cost_basis, 4) * 100
+        market_exposure = (close_order["filled_at"] - open_order["filled_at"]).days
+
+        revenue = round((sale_price - cost_basis) * open_qty, 2)
+        print(trade.id, market_exposure, revenue, f"{pct_change}%")
+
     # Get all trades
     # Find trades with state = not closed
     # Add open order fill date
@@ -261,8 +306,9 @@ def complete_the_trade(ctx: click.Context):
     # add cost basis
     # add market value at sale
     # add potential tax implications
-    
+
     pass
+
 
 if __name__ == "__main__":
     cli(obj={})

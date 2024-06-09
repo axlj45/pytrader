@@ -77,7 +77,9 @@ class TraderDatabase:
                     doc = signal.get().to_dict()
                     model = SignalModel(signal.id, **doc)
                     if doc['orderId'] is not None:
-                        order = self.get_order(f'alpaca_{doc["orderId"]}')
+                        order = self.get_order(f'alpaca{doc["orderId"]}')
+                        if order is None:
+                            order = self.get_order(f'alapca_{doc["orderId"]}')
                         model.resolvedOrder = order
                     resolved_signals.append(model)
 
@@ -102,6 +104,18 @@ class TraderDatabase:
         doc_ref = trades.document(trade_id)
         doc_ref.update(trade_data)
 
+    def get_trades(self, state:str = None) :
+        """
+        Retrieves all trades from the database.
+        """
+        trades = self.db.collection(self._trade_collection)
+        if state:
+            query = trades.where("state", "==", state)
+        else:
+            query = trades
+        results = query.stream()
+        return results
+        # return [TradeModel.from_dict(doc.id, doc.to_dict()) for doc in results]
     def add_signal(self, signal: SignalModel) -> SignalModel | None:
         """
         Adds a trade to the database.
