@@ -1,25 +1,18 @@
+from dataclasses import dataclass
 from datetime import datetime
 import pytz
 
 from pytrader.model import SignalModel
 
 
+@dataclass
 class TradeModel:
-    def __init__(
-        self,
-        id: str,
-        symbol: str,
-        timestamp: datetime,
-        strategy: str,
-        signals: list[str] | None = None,
-        resolved_signals: list[SignalModel] | None = None,
-    ):
-        self.id = id
-        self.symbol = symbol
-        self.timestamp = timestamp
-        self.strategy = strategy
-        self.signals = signals
-        self.resolved_signals = resolved_signals
+    id: str
+    symbol: str
+    timestamp: datetime
+    strategy: str
+    signals: list[str] | None = None
+    resolved_signals: list[SignalModel] | None = None
 
     def to_dict(self):
         result = {
@@ -32,15 +25,14 @@ class TradeModel:
 
         return result
 
-    @staticmethod
-    def from_dict(data):
-        return TradeModel(
-            data["id"],
-            data["symbol"],
-            data["timestamp"],
-            data["strategy"],
-            data["signals"],
-        )
+    def load_signals(self):
+        if self.signals is None or len(self.signals) == 0:
+            return None
+
+        self.resolved_signals = []
+        for signal in self.signals:
+            doc = signal.get()
+            self.resolved_signals.append(SignalModel(signal.id, **doc.to_dict()))
 
     @staticmethod
     def create_trade(symbol, trade_id: str, strategy: str, signals: list[str]):

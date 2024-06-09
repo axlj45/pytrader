@@ -247,6 +247,22 @@ def monitor_orders(ctx: click.Context):
     log.info("Starting order stream.")
     client.get_order_stream(_trade_event_handler)
 
+@cli.command()
+@click.pass_context
+def complete_the_trade(ctx: click.Context):
+    db: TraderDatabase = ctx.obj["db"]
+    trade = db.get_trade("mrk_2024-05-30_rsi_buy")
+    print(trade)
+    # Get all trades
+    # Find trades with state = not closed
+    # Add open order fill date
+    # Add close order fill date
+    # Add trade duration in days field
+    # add cost basis
+    # add market value at sale
+    # add potential tax implications
+    
+    pass
 
 if __name__ == "__main__":
     cli(obj={})

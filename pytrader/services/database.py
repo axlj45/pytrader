@@ -75,7 +75,11 @@ class TraderDatabase:
             for signal in trade_doc["signals"]:
                 if isinstance(signal, DocumentReference):
                     doc = signal.get().to_dict()
-                    resolved_signals.append(SignalModel.from_dict(signal.id, doc))
+                    model = SignalModel(signal.id, **doc)
+                    if doc['orderId'] is not None:
+                        order = self.get_order(f'alpaca_{doc["orderId"]}')
+                        model.resolvedOrder = order
+                    resolved_signals.append(model)
 
             return TradeModel(
                 trade_id,
@@ -195,5 +199,5 @@ class TraderDatabase:
 
         # Return the first result, or None if there are no results
         for doc in results:
-            return TradeModel.from_dict(doc.to_dict())
+            return TradeModel(**doc.to_dict())
         return None
