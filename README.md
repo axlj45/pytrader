@@ -75,7 +75,7 @@ The `Signal Scanner` and `Signal Processor` need to each run once daily in seque
 15 20 * * * /opt/pytrader/process-live.sh
 ```
 
-The `Order Monitor` listens for new orders and updates to existing orders.  As such, this process should be run as a daemon or executed by a tool that can keep it alive if it should crash.  Systemd is recommended if deploying to a Linux virtual machine.
+The `Order Monitor` listens for new orders and updates to existing orders.  As such, this process should be run as a daemon or executed by a tool that can keep it alive if it should crash.  Systemd is recommended if deploying to a Linux virtual machine.  The `deployment` folder contains samples for setting up systemd.  Docker is coming soon.
 
 **WARNING**: Only a single instance of each process should be running at any point in time.  No part of the tool is designed to run in a distributed infrastructure.
 
