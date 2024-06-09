@@ -45,10 +45,9 @@ def cli(ctx: click.Context, config: str, live: bool, log_path: str, log_level: s
     ctx.ensure_object(dict)
     cfg = TradeConfig(config)
     ctx.obj["db"] = TraderDatabase(cfg)
-    ctx.obj["client"] = AlpacaClient(
+    ctx.obj["broker"] = AlpacaClient(
         cfg.alpaca_key, cfg.alpaca_secret, live or cfg.alpaca_paper
     )
-    pass
 
 
 @cli.command()
@@ -57,7 +56,7 @@ def cli(ctx: click.Context, config: str, live: bool, log_path: str, log_level: s
 def rsi(ctx: click.Context, refresh: bool):
     """Calculate RSI signals for all tickers in the S&P 500."""
     signals_by_symbol = rsi_signals(refresh)
-    client: AlpacaClient = ctx.obj["client"]
+    broker: AlpacaClient = ctx.obj["broker"]
     db: TraderDatabase = ctx.obj["db"]
     log = logging.getLogger("pytrader.signals.rsi")
 
@@ -71,8 +70,8 @@ def rsi(ctx: click.Context, refresh: bool):
         key = _get_trade_key(symbol, last_signal)
 
         if last_signal["action"] == "Buy":
-            market_days = client.get_open_market_days_since(d)
-            next_trade_day = client.get_next_trade_day()
+            market_days = broker.get_open_market_days_since(d)
+            next_trade_day = broker.get_next_trade_day()
 
             signal = SignalModel.create_signal(
                 symbol, key, "Buy", "RSI", last_signal["metadata"], next_trade_day
@@ -97,7 +96,7 @@ def rsi(ctx: click.Context, refresh: bool):
             )
 
         elif last_signal["action"] == "Sell":
-            market_days = client.get_open_market_days_since(d)
+            market_days = broker.get_open_market_days_since(d)
             buy_signal = _df_row_to_signal(symbol, signal_data.iloc[-2])
             buy_key = _get_trade_key(symbol, buy_signal).replace("hold", "buy")
 
@@ -120,7 +119,7 @@ def rsi(ctx: click.Context, refresh: bool):
                 log.warning(msg)
                 continue
 
-            open_order = client.get_order_by_id(open_signal.orderId)
+            open_order = broker.get_order_by_id(open_signal.orderId)
             if open_order is None or open_order.status not in [
                 "filled",
                 "partially_filled",
@@ -129,7 +128,7 @@ def rsi(ctx: click.Context, refresh: bool):
                 log.warning(msg)
                 continue
 
-            next_trade_day = client.get_next_trade_day()
+            next_trade_day = broker.get_next_trade_day()
 
             close_signal = SignalModel.create_signal(
                 symbol, key, "Sell", "RSI", last_signal["metadata"], next_trade_day
@@ -151,10 +150,10 @@ def rsi(ctx: click.Context, refresh: bool):
 @click.pass_context
 def process_signals(ctx: click.Context):
     """Process RSI signals and execute trades."""
-    client: AlpacaClient = ctx.obj["client"]
+    broker: AlpacaClient = ctx.obj["broker"]
     db: TraderDatabase = ctx.obj["db"]
     log = logging.getLogger("pytrader.signal.processor")
-    enabled, account = client.account()
+    enabled, account = broker.account()
     if not enabled:
         log.error("Account is not enabled for trading. Exiting.")
         return
@@ -183,7 +182,7 @@ def process_signals(ctx: click.Context):
 
             existing_cost_basis = 0
 
-            position = client.get_position_for(symbol)
+            position = broker.get_position_for(symbol)
             if position is not None:
                 existing_cost_basis = float(position.avg_entry_price) * int(
                     position.qty
@@ -199,14 +198,14 @@ def process_signals(ctx: click.Context):
 
             log.info(f"Buying {qty} shares of {symbol} at {last_open_price}.")
 
-            order = client.buy_with_stop_loss(symbol, qty, last_open_price, stop_price)
+            order = broker.buy_with_stop_loss(symbol, qty, last_open_price, stop_price)
             if order is not None:
                 signal.orderId = order.id
                 db.update_signal_order(signal.id, order.id)
                 log.info(f"Order placed for {symbol} with id {order.id}.")
 
         elif signal.action == "Sell":
-            order = client.close_position(symbol)
+            order = broker.close_position(symbol)
             if order is not None:
                 signal.orderId = order.id
                 db.update_signal_order(signal.id, order.id)
@@ -220,7 +219,7 @@ def process_signals(ctx: click.Context):
 def monitor_orders(ctx: click.Context):
     """Monitor open orders and execute stop losses."""
     db: TraderDatabase = ctx.obj["db"]
-    client: AlpacaClient = ctx.obj["client"]
+    broker: AlpacaClient = ctx.obj["broker"]
     log = logging.getLogger("pytrader.broker.order_monitor")
 
     async def _trade_event_handler(event: str, order: dict):
@@ -230,14 +229,14 @@ def monitor_orders(ctx: click.Context):
             f"{event}: {order['side']} {order['order_type']} order {order['symbol']}."
         )
 
-    enabled, account = client.account()
+    enabled, account = broker.account()
     if not enabled:
         log.error("Account is not enabled for trading. Exiting.")
         return -1
 
     def signal_handler(sig, frame):
         log.info(f"Received shutdown event: {system_signal.Signals(sig).name}.")
-        client.close_stream()
+        broker.close_stream()
         log.info("Gracefully shutdown. Exiting")
         sys.exit(0)
 
@@ -245,7 +244,7 @@ def monitor_orders(ctx: click.Context):
     system_signal.signal(system_signal.SIGTERM, signal_handler)
 
     log.info("Starting order stream.")
-    client.get_order_stream(_trade_event_handler)
+    broker.get_order_stream(_trade_event_handler)
 
 
 if __name__ == "__main__":
