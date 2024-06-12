@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pytrader"
-version = "0.1.1"
+version = "1.0.0"
 description = "CLI for identifying a creating trades"
 authors = ["AJ <11035621+axlj45@users.noreply.github.com>"]
 license = "MIT"
