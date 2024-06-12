@@ -76,20 +76,21 @@ class TraderDatabase:
                 if isinstance(signal, DocumentReference):
                     doc = signal.get().to_dict()
                     model = SignalModel(signal.id, **doc)
-                    if doc['orderId'] is not None:
-                        order = self.get_order(f'alpaca{doc["orderId"]}')
+                    if doc["orderId"] is not None:
+                        order = self.get_order(f'alpaca_{doc["orderId"]}')
                         if order is None:
                             order = self.get_order(f'alapca_{doc["orderId"]}')
                         model.resolvedOrder = order
                     resolved_signals.append(model)
 
             return TradeModel(
-                trade_id,
-                trade_doc["symbol"],
-                trade_doc["timestamp"],
-                trade_doc["strategy"],
-                trade_doc["signals"],
-                resolved_signals,
+                id=trade_id,
+                symbol=trade_doc["symbol"],
+                timestamp=trade_doc["timestamp"],
+                strategy=trade_doc["strategy"],
+                status=trade_doc.get("status"),
+                signals=trade_doc["signals"],
+                resolved_signals=resolved_signals,
             )
         except Exception as e:
             l.error(e)
@@ -104,18 +105,24 @@ class TraderDatabase:
         doc_ref = trades.document(trade_id)
         doc_ref.update(trade_data)
 
-    def get_trades(self, state:str = None) :
+    def get_trades(self, include_closed: bool = False):
         """
         Retrieves all trades from the database.
         """
         trades = self.db.collection(self._trade_collection)
-        if state:
-            query = trades.where("state", "==", state)
-        else:
+        if include_closed:
             query = trades
+        else:
+            data_filter = FieldFilter("status", "!=", "closed")
+            query = trades.where(filter=data_filter)
+
         results = query.stream()
         return results
         # return [TradeModel.from_dict(doc.id, doc.to_dict()) for doc in results]
+
+    def close_trade(self, trade: TradeModel):
+        self.update_trade(trade.id, trade.to_summary_dict())
+
     def add_signal(self, signal: SignalModel) -> SignalModel | None:
         """
         Adds a trade to the database.

@@ -38,6 +38,4 @@ class SignalModel:
         execute_on: datetime,
     ):
         date = localtime.today()
-        return SignalModel(
-            id, symbol, action, date, strategy, metadata, executeOn=execute_on
-        )
+        return SignalModel(id, symbol, action, date, strategy, metadata, executeOn=execute_on)
