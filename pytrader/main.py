@@ -14,7 +14,7 @@ from pytrader.utils.need_something_better import _df_row_to_signal, _get_trade_k
 @click.pass_context
 @click.option("-c", "--config", default=None, help="Path to configuration file.")
 @click.option("-l", "--live", is_flag=True, help="Execute against live account.")
-@click.option("--log-path", default="pytrader.log", help="Path to write log file.")
+@click.option("-o", "--log-path", default="pytrader.log", help="Path to write log file.")
 @click.option(
     "-v",
     "--log-level",
