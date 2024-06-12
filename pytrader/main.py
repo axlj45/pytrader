@@ -45,9 +45,7 @@ def cli(ctx: click.Context, config: str, live: bool, log_path: str, log_level: s
     ctx.ensure_object(dict)
     cfg = TradeConfig(config)
     ctx.obj["db"] = TraderDatabase(cfg)
-    ctx.obj["broker"] = AlpacaClient(
-        cfg.alpaca_key, cfg.alpaca_secret, live or cfg.alpaca_paper
-    )
+    ctx.obj["broker"] = AlpacaClient(cfg.alpaca_key, cfg.alpaca_secret, live or cfg.alpaca_paper)
 
 
 @cli.command()
@@ -73,15 +71,11 @@ def rsi(ctx: click.Context, refresh: bool):
             market_days = broker.get_open_market_days_since(d)
             next_trade_day = broker.get_next_trade_day()
 
-            signal = SignalModel.create_signal(
-                symbol, key, "Buy", "RSI", last_signal["metadata"], next_trade_day
-            )
+            signal = SignalModel.create_signal(symbol, key, "Buy", "RSI", last_signal["metadata"], next_trade_day)
             result = db.add_signal(signal)
 
             if result is None:
-                log.warning(
-                    f"BUY signal for {symbol} has already been triggered: {key}."
-                )
+                log.warning(f"BUY signal for {symbol} has already been triggered: {key}.")
                 continue
 
             trade = TradeModel.create_trade(symbol, key, "RSI", [])
@@ -91,9 +85,7 @@ def rsi(ctx: click.Context, refresh: bool):
             log.debug(
                 f"Buy Signal for {symbol} on {d} is {(today - d).days} days old but {len(market_days)} market days old."
             )
-            log.debug(
-                f"Next trade day is {next_trade_day} which is {(next_trade_day - today).days} days away."
-            )
+            log.debug(f"Next trade day is {next_trade_day} which is {(next_trade_day - today).days} days away.")
 
         elif last_signal["action"] == "Sell":
             market_days = broker.get_open_market_days_since(d)
@@ -103,16 +95,10 @@ def rsi(ctx: click.Context, refresh: bool):
             trade = db.get_trade(buy_key)
 
             if trade is None:
-                log.warning(
-                    f"Close signal triggered for {symbol} but no opening trade could be located: {buy_key}."
-                )
+                log.warning(f"Close signal triggered for {symbol} but no opening trade could be located: {buy_key}.")
                 continue
 
-            open_signal = (
-                trade.resolved_signals[0]
-                if len(trade.resolved_signals or []) > 0
-                else None
-            )
+            open_signal = trade.resolved_signals[0] if len(trade.resolved_signals or []) > 0 else None
 
             if open_signal is None:
                 msg = f"Close signal triggered for {symbol} but no opening signal could be found for {buy_key}."
@@ -120,7 +106,7 @@ def rsi(ctx: click.Context, refresh: bool):
                 continue
 
             open_order = broker.get_order_by_id(open_signal.orderId)
-            if open_order is None or open_order.status not in [
+            if open_order is None or open_order.get("status") not in [
                 "filled",
                 "partially_filled",
             ]:
@@ -136,9 +122,7 @@ def rsi(ctx: click.Context, refresh: bool):
             result = db.add_signal(close_signal)
 
             if result is None:
-                log.warning(
-                    f"Close signal for {symbol} has already been triggered: {key}."
-                )
+                log.warning(f"Close signal for {symbol} has already been triggered: {key}.")
                 continue
 
             db.add_signal_ref_to_trade(trade.id, close_signal.id)
@@ -184,9 +168,7 @@ def process_signals(ctx: click.Context):
 
             position = broker.get_position_for(symbol)
             if position is not None:
-                existing_cost_basis = float(position.avg_entry_price) * int(
-                    position.qty
-                )
+                existing_cost_basis = float(position.avg_entry_price) * int(position.qty)
 
             log.debug(f"Existing cost basis for {symbol}: {existing_cost_basis}")
             available_symbol_funds = max_trade_value - existing_cost_basis
@@ -225,9 +207,7 @@ def monitor_orders(ctx: click.Context):
     async def _trade_event_handler(event: str, order: dict):
         ao_key = f"alpaca_{order['id']}"
         db.upsert_order(ao_key, order)
-        log.info(
-            f"{event}: {order['side']} {order['order_type']} order {order['symbol']}."
-        )
+        log.info(f"{event}: {order['side']} {order['order_type']} order {order['symbol']}.")
 
     enabled, account = broker.account()
     if not enabled:
@@ -245,6 +225,68 @@ def monitor_orders(ctx: click.Context):
 
     log.info("Starting order stream.")
     broker.get_order_stream(_trade_event_handler)
+
+
+@cli.command()
+@click.pass_context
+def complete_the_trade(ctx: click.Context):
+    db: TraderDatabase = ctx.obj["db"]
+    broker = ctx.obj["broker"]
+    log = logging.getLogger("pytrader.trade")
+
+    trades = db.get_trades()
+
+    for tradeDoc in trades:
+        trade = db.get_trade(tradeDoc.id)
+
+        trade_incomplete = len(trade.resolved_signals) < 2
+        if trade_incomplete:
+            log.debug(f"Ignoring trade {trade.id}. it only has 1 signal")
+            continue
+
+        for signal in trade.resolved_signals:
+            if signal.resolvedOrder is None:
+                log.debug(f"Order database is missing order for signal: {signal.id}")
+                broker_order = broker.get_order_by_id(signal.orderId)
+                if broker_order is not None:
+                    signal.resolvedOrder = broker_order
+                    ao_key = f"alpaca_{signal.orderId}"
+                    db.upsert_order(ao_key, broker_order)
+                else:
+                    logging.warning(f"Unable to locate order for {signal.id}: signal.orderId")
+                    trade_incomplete = True
+                    break
+
+            if signal.resolvedOrder["status"] != "FILLED":
+                log.warning(f"Skipping {signal.id}: Order is {signal.resolvedOrder['status']}")
+                trade_incomplete = True
+
+        if trade_incomplete:
+            log.debug(f"Ignoring trade {trade.id} as it is incomplete.")
+            continue
+
+        open_order = trade.resolved_signals[0].resolvedOrder
+        close_order = trade.resolved_signals[-1].resolvedOrder
+
+        open_qty = float(open_order["qty"])
+        close_qty = float(close_order["qty"])
+
+        if open_qty - close_qty != 0:
+            log.debug(f"Ignoring trade {trade.id}, quantities don't match. Open qty: {open_qty} Close qty: {close_qty}")
+            continue
+
+        trade.cost_basis = float(open_order["filled_avg_price"])
+        trade.sale_price = float(close_order["filled_avg_price"])
+        trade.result_pct = round((trade.sale_price - trade.cost_basis) / trade.cost_basis, 4)
+        trade.revenue = round((trade.sale_price - trade.cost_basis) * open_qty, 2)
+
+        trade.opened_on = open_order["filled_at"]
+        trade.closed_on = close_order["filled_at"]
+        trade.market_exposure = (trade.closed_on - trade.opened_on).days
+
+        db.close_trade(trade)
+
+        log.info(trade.id, trade.market_exposure, trade.revenue, format(trade.result_pct, ".2%"))
 
 
 if __name__ == "__main__":
