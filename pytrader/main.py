@@ -253,7 +253,7 @@ def complete_the_trade(ctx: click.Context):
                     ao_key = f"alpaca_{signal.orderId}"
                     db.upsert_order(ao_key, broker_order)
                 else:
-                    logging.warning(f"Unable to locate order for {signal.id}: signal.orderId")
+                    logging.warning(f"Unable to locate order for {signal.id}: {signal.orderId}")
                     trade_incomplete = True
                     break
 
@@ -286,7 +286,7 @@ def complete_the_trade(ctx: click.Context):
 
         db.close_trade(trade)
 
-        log.info(trade.id, trade.market_exposure, trade.revenue, format(trade.result_pct, ".2%"))
+        # log.info(trade.id, trade.market_exposure, trade.revenue, format(trade.result_pct, ".2%"))
 
 
 if __name__ == "__main__":
