@@ -196,7 +196,7 @@ class TraderDatabase:
         query = signals.where(filter=data_filter).where(filter=order_filter)
         results = query.stream()
 
-        return [SignalModel.from_dict(doc.id, doc.to_dict()) for doc in results]
+        return [SignalModel(doc.id, **doc.to_dict()) for doc in results]
 
     def update_signal_order(self, signal_id: str, order_id: str):
         """
