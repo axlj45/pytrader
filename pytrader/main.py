@@ -144,7 +144,7 @@ def process_signals(ctx: click.Context):
 
     account_value = float(account.portfolio_value)
     cash = float(account.non_marginable_buying_power)
-    max_trade_value = account_value * 0.05
+    max_trade_value = account_value * 0.06
     log.info("Beginning signal processing")
     log.debug(f"Account Value: {account_value}")
     log.debug(f"Cash: {cash}")
