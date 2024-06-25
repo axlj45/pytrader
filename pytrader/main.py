@@ -116,10 +116,8 @@ def rsi(ctx: click.Context, refresh: bool):
                 continue
 
             next_trade_day = broker.get_next_trade_day()
-
-            close_signal = SignalModel.create_signal(
-                symbol, key, "Sell", "RSI", last_signal["metadata"], next_trade_day
-            )
+            metadata = last_signal["metadata"]
+            close_signal = SignalModel.create_signal(symbol, key, "Sell", "RSI", metadata, next_trade_day)
             result = db.add_signal(close_signal)
 
             if result is None:
@@ -129,6 +127,26 @@ def rsi(ctx: click.Context, refresh: bool):
             db.add_signal_ref_to_trade(trade.id, close_signal.id)
 
             log.info(f"Close Signal for {symbol}")
+
+    open_trades = db.get_trades()
+
+    for tradeDoc in open_trades:
+        trade = db.get_trade(tradeDoc.id)
+
+        if len(trade.signals) != 1:
+            continue
+
+        if (localtime.today() - trade.resolved_signals[0].executeOn).days > 10:
+            log.warning(f"Trade timed out, creating closing signal for: {trade.id}")
+            next_trade_day = broker.get_next_trade_day()
+            key = _get_trade_key(trade.symbol, {"action": "SELL", "date": localtime.today()})
+            signal = SignalModel.create_signal(trade.symbol, key, "Sell", "RSI", {"note": "Timed out"}, next_trade_day)
+            result = db.add_signal(signal)
+            if result is None:
+                log.warning(f"Close signal for {trade.symbol} has already been triggered: {key}.")
+                continue
+            db.add_signal_ref_to_trade(trade.id, signal.id)
+            log.info(f"Close Signal for {trade.symbol}")
 
 
 @cli.command()
@@ -188,7 +206,11 @@ def process_signals(ctx: click.Context):
                 log.info(f"Order placed for {symbol} with id {order.id}.")
 
         elif signal.action == "Sell":
-            order = broker.close_position(symbol)
+            order = None
+            try:
+                order = broker.close_position(symbol)
+            except:  # noqa: E722
+                pass
             if order is not None:
                 signal.orderId = order.id
                 db.update_signal_order(signal.id, order.id)
@@ -258,8 +280,9 @@ def complete_the_trade(ctx: click.Context):
                     trade_incomplete = True
                     break
 
-            if signal.resolvedOrder["status"] != "FILLED":
-                log.warning(f"Skipping {signal.id}: Order is {signal.resolvedOrder['status']}")
+            order_status = (signal.resolvedOrder.get("status") or "EMPTY").lower()
+            if order_status not in ["filled", "partially_filled"]:
+                log.warning(f"Skipping {signal.id}: Order is {order_status}")
                 trade_incomplete = True
 
         if trade_incomplete:
