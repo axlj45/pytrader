@@ -106,7 +106,8 @@ def rsi(ctx: click.Context, refresh: bool):
                 continue
 
             open_order = broker.get_order_by_id(open_signal.orderId)
-            if open_order is None or open_order.get("status") not in [
+            order_status = (open_order.get("status") or "").lower()
+            if open_order is None or order_status not in [
                 "filled",
                 "partially_filled",
             ]:
