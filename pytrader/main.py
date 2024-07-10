@@ -46,6 +46,7 @@ def cli(ctx: click.Context, config: str, live: bool, log_path: str, log_level: s
     cfg = TradeConfig(config)
     ctx.obj["db"] = TraderDatabase(cfg)
     ctx.obj["broker"] = AlpacaClient(cfg.alpaca_key, cfg.alpaca_secret, live or cfg.alpaca_paper)
+    ctx.obj["cfg"] = cfg
 
 
 @cli.command()
@@ -136,7 +137,10 @@ def rsi(ctx: click.Context, refresh: bool):
         if len(trade.signals) != 1:
             continue
 
-        if (localtime.today() - trade.resolved_signals[0].executeOn).days > 10:
+        today = localtime.today()
+        executeDate = trade.resolved_signals[0].executeOn
+        age = today - executeDate
+        if age.days > 10:
             log.warning(f"Trade timed out, creating closing signal for: {trade.id}")
             next_trade_day = broker.get_next_trade_day()
             key = _get_trade_key(trade.symbol, {"action": "SELL", "date": localtime.today()})
@@ -163,7 +167,9 @@ def process_signals(ctx: click.Context):
 
     account_value = float(account.portfolio_value)
     cash = float(account.non_marginable_buying_power)
-    max_trade_value = account_value * 0.06
+    max_trade_value = account_value * ctx["cfg"].max_single_symbol
+    available_funds = cash * ctx["cfg"].max_portfolio_usage
+    available_trade_funds = min(available_funds, max_trade_value)
     log.info("Beginning signal processing")
     log.debug(f"Account Value: {account_value}")
     log.debug(f"Cash: {cash}")
@@ -175,10 +181,6 @@ def process_signals(ctx: click.Context):
         symbol = signal.symbol
 
         if signal.action == "Buy":
-            if cash < max_trade_value:
-                log.warning(f"Insufficient cash to buy {symbol}.")
-                continue
-
             last_close_price = signal.metadata["close"]
             last_open_price = signal.metadata["open"]
             stop_price = last_close_price * 0.98
@@ -190,7 +192,7 @@ def process_signals(ctx: click.Context):
                 existing_cost_basis = float(position.avg_entry_price) * int(position.qty)
 
             log.debug(f"Existing cost basis for {symbol}: {existing_cost_basis}")
-            available_symbol_funds = max_trade_value - existing_cost_basis
+            available_symbol_funds = available_trade_funds - existing_cost_basis
 
             qty = int(available_symbol_funds / last_close_price)
             if qty == 0:

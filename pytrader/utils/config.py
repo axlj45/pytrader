@@ -14,6 +14,8 @@ class TradeConfig:
         self.max_single_symbol = float(os.getenv("max_single_symbol") or 0.5)
         self.max_portfolio_usage = float(os.getenv("max_portfolio_usage") or 1)
         self.use_margin = self._strtobool(os.getenv("use_margin"))
+        self.rsi_send_gchat = self._strtobool(os.getenv("rsi_send_gchat"))
+        self.rsi_gchat_webhook = os.getenv("rsi_gchat_webhook")
 
     def _strtobool(self, val: str, default=False) -> bool:
         """
