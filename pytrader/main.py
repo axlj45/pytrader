@@ -160,6 +160,7 @@ def process_signals(ctx: click.Context):
     """Process RSI signals and execute trades."""
     broker: AlpacaClient = ctx.obj["broker"]
     db: TraderDatabase = ctx.obj["db"]
+    cfg: TradeConfig = ctx.obj["cfg"]
     log = logging.getLogger("pytrader.signal.processor")
     enabled, account = broker.account()
     if not enabled:
@@ -168,8 +169,8 @@ def process_signals(ctx: click.Context):
 
     account_value = float(account.portfolio_value)
     cash = float(account.non_marginable_buying_power)
-    max_trade_value = account_value * ctx["cfg"].max_single_symbol
-    available_funds = cash * ctx["cfg"].max_portfolio_usage
+    max_trade_value = account_value * cfg.max_single_symbol
+    available_funds = cash * cfg.max_portfolio_usage
     available_trade_funds = min(available_funds, max_trade_value)
     log.info("Beginning signal processing")
     log.debug(f"Account Value: {account_value}")
