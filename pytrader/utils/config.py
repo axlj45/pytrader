@@ -13,6 +13,7 @@ class TradeConfig:
         self.db_creds_path = os.getenv("firebase_creds")
         self.max_single_symbol = float(os.getenv("max_single_symbol") or 0.5)
         self.max_portfolio_usage = float(os.getenv("max_portfolio_usage") or 1)
+        self.rsi_timeout_days = int(os.getenv("rsi_timeout_days") or 10)
         self.use_margin = self._strtobool(os.getenv("use_margin"))
         self.rsi_send_gchat = self._strtobool(os.getenv("rsi_send_gchat"))
         self.rsi_gchat_webhook = os.getenv("rsi_gchat_webhook")

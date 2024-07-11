@@ -57,6 +57,7 @@ def rsi(ctx: click.Context, refresh: bool):
     signals_by_symbol = rsi_signals(refresh)
     broker: AlpacaClient = ctx.obj["broker"]
     db: TraderDatabase = ctx.obj["db"]
+    cfg: TradeConfig = ctx.obj["cfg"]
     log = logging.getLogger("pytrader.signals.rsi")
 
     for symbol in signals_by_symbol:
@@ -140,7 +141,7 @@ def rsi(ctx: click.Context, refresh: bool):
         today = localtime.today()
         executeDate = trade.resolved_signals[0].executeOn
         age = today - executeDate
-        if age.days > 10:
+        if age.days > cfg.rsi_timeout_days:
             log.warning(f"Trade timed out, creating closing signal for: {trade.id}")
             next_trade_day = broker.get_next_trade_day()
             key = _get_trade_key(trade.symbol, {"action": "SELL", "date": localtime.today()})
