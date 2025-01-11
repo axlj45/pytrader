@@ -26,8 +26,6 @@ firebase-admin = "^6.5.0"
 
 [tool.poetry.dev-dependencies]
 notebook = "7.3.2"
-
-[tool.poetry.group.dev.dependencies]
 pytest = "^7.1.2"
 pytest-cov = "^3.0"
 pytest-mock = "^3.6.1"
