@@ -25,7 +25,7 @@ python-dotenv = "^1.0.1"
 firebase-admin = "^6.5.0"
 
 [tool.poetry.dev-dependencies]
-notebook = "7.2.1"
+notebook = "7.2.2"
 
 [build-system]
 requires = ["poetry-core"]
