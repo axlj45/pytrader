@@ -17,33 +17,27 @@ from pytrader.utils import localtime
 
 
 class AlpacaClient:
-    def __init__(self, api_key, secret_key, paper=True):
+    def __init__(self, api_key, secret_key, use_paper=True):
         self.api_key = api_key
         self.secret_key = secret_key
-        self.paper = paper
-        self.client = TradingClient(api_key, secret_key, paper=paper)
+        self.paper = use_paper
+        self.client = TradingClient(api_key, secret_key, paper=use_paper)
 
         self._streamer = None
 
     def account(self):
         result = self.client.get_account()
-        disabled = (
-            result.account_blocked or result.trading_blocked
-        ) or not result.status == "ACTIVE"
+        disabled = (result.account_blocked or result.trading_blocked) or not result.status == "ACTIVE"
 
         return (not disabled, result)
 
-    def get_order_stream(
-        self, trade_updates_handler: Callable[[str, dict], None]
-    ) -> None:
+    def get_order_stream(self, trade_updates_handler: Callable[[str, dict], None]) -> None:
         async def _handle_trade_update(event: TradeUpdate):
             ao = self._order_to_dict(event.order)
             await trade_updates_handler(event.event, ao)
 
         if trade_updates_handler:
-            trade_stream_client = TradingStream(
-                self.api_key, self.secret_key, self.paper
-            )
+            trade_stream_client = TradingStream(self.api_key, self.secret_key, self.paper)
             trade_stream_client.subscribe_trade_updates(_handle_trade_update)
             trade_stream_client.run()
             self._streamer = trade_stream_client
@@ -62,21 +56,11 @@ class AlpacaClient:
             "created_at": localtime.convert_to_est(order.created_at),
             "updated_at": localtime.convert_to_est(order.updated_at),
             "submitted_at": localtime.convert_to_est(order.submitted_at),
-            "filled_at": localtime.convert_to_est(order.filled_at)
-            if order.filled_at
-            else None,
-            "expired_at": localtime.convert_to_est(order.expired_at)
-            if order.expired_at
-            else None,
-            "canceled_at": localtime.convert_to_est(order.canceled_at)
-            if order.canceled_at
-            else None,
-            "failed_at": localtime.convert_to_est(order.failed_at)
-            if order.failed_at
-            else None,
-            "replaced_at": localtime.convert_to_est(order.replaced_at)
-            if order.replaced_at
-            else None,
+            "filled_at": localtime.convert_to_est(order.filled_at) if order.filled_at else None,
+            "expired_at": localtime.convert_to_est(order.expired_at) if order.expired_at else None,
+            "canceled_at": localtime.convert_to_est(order.canceled_at) if order.canceled_at else None,
+            "failed_at": localtime.convert_to_est(order.failed_at) if order.failed_at else None,
+            "replaced_at": localtime.convert_to_est(order.replaced_at) if order.replaced_at else None,
             "replaced_by": str(order.replaced_by) if order.replaced_by else None,
             "replaces": str(order.replaces) if order.replaces else None,
             "asset_id": str(order.asset_id),
@@ -85,9 +69,7 @@ class AlpacaClient:
             "notional": order.notional,
             "qty": float(order.qty) if order.qty else None,
             "filled_qty": float(order.filled_qty) if order.filled_qty else None,
-            "filled_avg_price": float(order.filled_avg_price)
-            if order.filled_avg_price
-            else None,
+            "filled_avg_price": float(order.filled_avg_price) if order.filled_avg_price else None,
             "order_class": order.order_class.name,
             "order_type": order.order_type.name,
             "type": order.type.name,
@@ -97,12 +79,8 @@ class AlpacaClient:
             "stop_price": float(order.stop_price) if order.stop_price else None,
             "status": order.status.name,
             "extended_hours": order.extended_hours,
-            "legs": [self._order_to_dict(leg) for leg in order.legs]
-            if order.legs
-            else None,
-            "trail_percent": float(order.trail_percent)
-            if order.trail_percent
-            else None,
+            "legs": [self._order_to_dict(leg) for leg in order.legs] if order.legs else None,
+            "trail_percent": float(order.trail_percent) if order.trail_percent else None,
             "trail_price": float(order.trail_price) if order.trail_price else None,
             "hwm": order.hwm if order.hwm else None,
         }
@@ -154,9 +132,7 @@ class AlpacaClient:
                 return None
             raise e
 
-    def get_open_market_days_since(
-        self, since: datetime.date, till: datetime.date = datetime.date.today()
-    ):
+    def get_open_market_days_since(self, since: datetime.date, till: datetime.date = datetime.date.today()):
         """
         Returns the open market days in the last week.
         """
@@ -164,11 +140,7 @@ class AlpacaClient:
         start_date = since
         request = GetCalendarRequest(start=start_date, end=end_date)
         calendar = self.client.get_calendar(request)
-        return [
-            day.date
-            for day in calendar
-            if day.date.weekday() < 5 and day.open is not None
-        ]
+        return [day.date for day in calendar if day.date.weekday() < 5 and day.open is not None]
 
     def get_next_trade_day(self):
         """
@@ -176,9 +148,7 @@ class AlpacaClient:
         """
         today = localtime.today()
 
-        upcoming_trade_days = self.get_open_market_days_since(
-            today.date(), today.date() + datetime.timedelta(days=10)
-        )
+        upcoming_trade_days = self.get_open_market_days_since(today.date(), today.date() + datetime.timedelta(days=10))
         if len(upcoming_trade_days) > 1:
             timezone_aware_date = localtime.to_day(upcoming_trade_days[0])
             if timezone_aware_date.date() == today.date() and today.hour > 15:
