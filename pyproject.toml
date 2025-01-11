@@ -30,11 +30,6 @@ pytest = "^7.1.2"
 pytest-cov = "^3.0"
 pytest-mock = "^3.6.1"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.1.2"
-pytest-cov = "^3.0"
-pytest-mock = "^3.6.1"
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
