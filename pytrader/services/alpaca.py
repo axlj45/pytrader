@@ -17,11 +17,11 @@ from pytrader.utils import localtime
 
 
 class AlpacaClient:
-    def __init__(self, api_key, secret_key, use_paper=True):
+    def __init__(self, api_key, secret_key, paper=True):
         self.api_key = api_key
         self.secret_key = secret_key
-        self.paper = use_paper
-        self.client = TradingClient(api_key, secret_key, paper=use_paper)
+        self.paper = paper
+        self.client = TradingClient(api_key, secret_key, paper=paper)
 
         self._streamer = None
 
@@ -107,6 +107,8 @@ class AlpacaClient:
         Returns information about a specific order.
         order_id: str - The ID of the order
         """
+        if order_id is None:
+            return None
         return self._order_to_dict(self.client.get_order_by_id(order_id))
 
     def get_open_orders(self):
