@@ -113,7 +113,7 @@ class TraderDatabase:
         if include_closed:
             query = trades
         else:
-            data_filter = FieldFilter("status", "!=", "closed")
+            data_filter = FieldFilter("status", "not-in", ["closed", "canceled"])
             query = trades.where(filter=data_filter)
 
         results = query.stream()

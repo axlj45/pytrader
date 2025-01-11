@@ -284,8 +284,20 @@ def complete_the_trade(ctx: click.Context):
                     trade_incomplete = True
                     break
 
-            order_status = (signal.resolvedOrder.get("status") or "EMPTY").lower()
-            if order_status not in ["filled", "partially_filled"]:
+            order_status = (signal.resolvedOrder.get("status") or None)
+            if not order_status:
+                log.warning(f"Closing trade for {signal.id}: No corresponding order found.")
+                trade.status = "canceled"
+                trade.canceled_reason = "Order not found on broker."
+                db.close_trade(trade)
+                trade_incomplete = True
+            elif order_status.lower() == "expired":
+                log.warning(f"Closing trade for {signal.id}: Order expired on broker.")
+                trade.status = "canceled"
+                trade.canceled_reason = "Order expired on broker."
+                db.close_trade(trade)
+                trade_incomplete = True
+            elif order_status.lower() not in ["filled", "partially_filled"]:
                 log.warning(f"Skipping {signal.id}: Order is {order_status}")
                 trade_incomplete = True
 

@@ -21,6 +21,7 @@ class TradeModel:
     opened_on: datetime = None
     closed_on: datetime = None
     market_exposure: float = None
+    canceled_reason: str = None
 
     def to_dict(self):
         result = {
@@ -43,6 +44,7 @@ class TradeModel:
             "opened_on": self.opened_on,
             "closed_on": self.closed_on,
             "market_exposure": self.market_exposure,
+            "canceled_reason": self.canceled_reason,
         }
 
     def load_signals(self):
