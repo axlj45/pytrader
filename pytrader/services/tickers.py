@@ -15,8 +15,8 @@ def get_tickers(refresh_date: str = Timestamp.now(tz=ny_tz).floor("D")):
     symbols_list = sp500["Symbol"].unique().tolist()
 
     QQQ = read_html("https://en.wikipedia.org/wiki/Nasdaq-100#Components")[4]
-    QQQ["Ticker"] = QQQ["Ticker"].str.replace(".", "-")
-    nasdaq_symbols_list = QQQ["Ticker"].unique().tolist()
+    QQQ["Symbol"] = QQQ["Symbol"].str.replace(".", "-")
+    nasdaq_symbols_list = QQQ["Symbol"].unique().tolist()
 
     symbols_list.extend(nasdaq_symbols_list)
     symbols_list.extend(
