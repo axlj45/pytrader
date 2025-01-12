@@ -17,11 +17,11 @@ from pytrader.utils import localtime
 
 
 class AlpacaClient:
-    def __init__(self, api_key, secret_key, paper=True):
+    def __init__(self, api_key, secret_key, use_paper=True):
         self.api_key = api_key
         self.secret_key = secret_key
-        self.paper = paper
-        self.client = TradingClient(api_key, secret_key, paper=paper)
+        self.paper = use_paper
+        self.client = TradingClient(api_key, secret_key, paper=use_paper)
 
         self._streamer = None
 
