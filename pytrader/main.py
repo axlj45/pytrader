@@ -108,6 +108,10 @@ def rsi(ctx: click.Context, refresh: bool):
                 continue
 
             open_order = broker.get_order_by_id(open_signal.orderId)
+            if open_order is None:
+                msg = f"Close signal triggered for {symbol} but no opening order could be found for {buy_key}."
+                log.warning(msg)
+                continue
             order_status = (open_order.get("status") or "").lower()
             if open_order is None or order_status not in [
                 "filled",
@@ -284,7 +288,7 @@ def complete_the_trade(ctx: click.Context):
                     trade_incomplete = True
                     break
 
-            order_status = (signal.resolvedOrder.get("status") or None)
+            order_status = signal.resolvedOrder.get("status") or None
             if not order_status:
                 log.warning(f"Closing trade for {signal.id}: No corresponding order found.")
                 trade.status = "canceled"

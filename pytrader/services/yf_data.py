@@ -1,5 +1,5 @@
 from joblib import Memory
-from yfinance import download
+import yfinance as yf
 import pandas as pd
 from pytz import timezone
 import warnings
@@ -12,7 +12,7 @@ memory = Memory(cachedir, verbose=0)
 
 @memory.cache
 def _cached_yf_download(*args, **kwargs):
-    return download(*args, **kwargs)
+    return yf.download(*args, **kwargs)
 
 
 def get_adjusted_market_data(
@@ -30,8 +30,10 @@ def get_adjusted_market_data(
         end=end_date,
         interval=interval,
         auto_adjust=True,
-    ).stack()
-
+        threads=1
+    )
+    
+    df = df.stack()
     df.index.names = ["date", "ticker"]
     df.columns = df.columns.str.lower()
 
