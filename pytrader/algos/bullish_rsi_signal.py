@@ -59,9 +59,7 @@ def calculate_signals(symbol_data: pd.DataFrame, all_tickers_df: pd.DataFrame):
             df["RSI"] = df["RS"].apply(lambda x: 100 - (100 / (x + 1)))
 
             df["RSI_Buy"] = df.apply(_rsi_buy, axis=1)
-            df["Periods_Since_Buy"] = (
-                df.loc[df["RSI_Buy"]].index.to_series().diff().fillna(0)
-            )
+            df["Periods_Since_Buy"] = df.loc[df["RSI_Buy"]].index.to_series().diff().fillna(0)
 
             results = []
             for i in range(len(df)):

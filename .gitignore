@@ -7,3 +7,4 @@ __pycache__/
 dist/
 .pytrader/
 .pytest_cache/
+yfinance_cache/
