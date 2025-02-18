@@ -52,17 +52,6 @@ test = ["anyio[trio]", "coverage[toml] (>=7)", "exceptiongroup (>=1.2.0)", "hypo
 trio = ["trio (>=0.26.1)"]
 
 [[package]]
-name = "appdirs"
-version = "1.4.4"
-description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
-optional = false
-python-versions = "*"
-files = [
-    {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},
-    {file = "appdirs-1.4.4.tar.gz", hash = "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41"},
-]
-
-[[package]]
 name = "appnope"
 version = "0.1.4"
 description = "Disable App Nap on macOS >= 10.9"
@@ -1274,27 +1263,6 @@ files = [
     {file = "h11-0.14.0-py3-none-any.whl", hash = "sha256:e3fe4ac4b851c468cc8363d500db52c2ead036020723024a109d37346efaa761"},
     {file = "h11-0.14.0.tar.gz", hash = "sha256:8f19fbbe99e72420ff35c00b27a34cb9937e902a8b810e2c88300c6f0a3b699d"},
 ]
-
-[[package]]
-name = "html5lib"
-version = "1.1"
-description = "HTML parser based on the WHATWG HTML specification"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-files = [
-    {file = "html5lib-1.1-py2.py3-none-any.whl", hash = "sha256:0d78f8fde1c230e99fe37986a60526d7049ed4bf8a9fadbad5f00e22e58e041d"},
-    {file = "html5lib-1.1.tar.gz", hash = "sha256:b2e5b40261e20f354d198eae92afc10d750afb487ed5e50f9c4eaf07c184146f"},
-]
-
-[package.dependencies]
-six = ">=1.9"
-webencodings = "*"
-
-[package.extras]
-all = ["chardet (>=2.2)", "genshi", "lxml"]
-chardet = ["chardet (>=2.2)"]
-genshi = ["genshi"]
-lxml = ["lxml"]
 
 [[package]]
 name = "httpcore"
@@ -4233,29 +4201,31 @@ files = [
 
 [[package]]
 name = "yfinance"
-version = "0.2.31"
+version = "0.2.53"
 description = "Download market data from Yahoo! Finance API"
 optional = false
 python-versions = "*"
 files = [
-    {file = "yfinance-0.2.31-py2.py3-none-any.whl", hash = "sha256:a2367c8f07fbeca95fc9e5ec46c2c8d0c41ab06b2c91f60d4a04c06aa01c7fba"},
-    {file = "yfinance-0.2.31.tar.gz", hash = "sha256:4e09959a6b838c9ade9fdfe054d2663d5543c8b3ec8b463d17ce4789a3a0b3c4"},
+    {file = "yfinance-0.2.53-py2.py3-none-any.whl", hash = "sha256:529626244ebcfe0185d2cfdab120b5534b493c007f58722c16f4e4da55386b5b"},
+    {file = "yfinance-0.2.53.tar.gz", hash = "sha256:2364c787eb9096f768014ca84175b6d9ccd1656bc252eb0698bd991352536b6a"},
 ]
 
 [package.dependencies]
-appdirs = ">=1.4.4"
 beautifulsoup4 = ">=4.11.1"
 frozendict = ">=2.3.4"
-html5lib = ">=1.1"
-lxml = ">=4.9.1"
 multitasking = ">=0.0.7"
 numpy = ">=1.16.5"
 pandas = ">=1.3.0"
 peewee = ">=3.16.2"
+platformdirs = ">=2.0.0"
 pytz = ">=2022.5"
 requests = ">=2.31"
+
+[package.extras]
+nospam = ["requests_cache (>=1.0)", "requests_ratelimiter (>=0.3.1)"]
+repair = ["scipy (>=1.6.3)"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "a556fa570a4bf446a9082258f0326ca6e17dab2bf7f4e86df314388b1b3daff2"
+content-hash = "f20bd88eb51bb059b97b66a81c78f654eddd5753a89f397a42c449fed6c1ad4b"
