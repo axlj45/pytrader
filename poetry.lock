@@ -849,14 +849,14 @@ devel = ["colorama", "json-spec", "jsonschema", "pylint", "pytest", "pytest-benc
 
 [[package]]
 name = "firebase-admin"
-version = "6.6.0"
+version = "6.7.0"
 description = "Firebase Admin Python SDK"
 optional = false
 python-versions = ">=3.7"
 groups = ["main"]
 files = [
-    {file = "firebase_admin-6.6.0-py3-none-any.whl", hash = "sha256:4a55af17e0b4e3de05ba43ad25d92af29b48263622a913faea66e9c8ba50aeef"},
-    {file = "firebase_admin-6.6.0.tar.gz", hash = "sha256:9ce851ae71038acaaeffdcfc09b175dadc3b2e5aa8a0b65760e21bb10253b684"},
+    {file = "firebase_admin-6.7.0-py3-none-any.whl", hash = "sha256:2390e87cc4cdc4d459525290c7ca33c8556a2b1aade0094f125b3186eba0eb1d"},
+    {file = "firebase_admin-6.7.0.tar.gz", hash = "sha256:34de33e4ab3821e81544b966288408644f40713084e7e573bed8c0df257310ba"},
 ]
 
 [package.dependencies]
@@ -4437,4 +4437,4 @@ requests = ">=2.31"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "a628545cbb1a19c207eddc2ae6884826e3ee4050f4b93c667f3c9a4dc5feeff3"
+content-hash = "d380eccb9555d37840f99a521e4d398743fa73dd55ea514393c70af0227cc7a2"
