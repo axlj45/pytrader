@@ -22,7 +22,7 @@ click = "^8.1.8"
 pytz = "^2025.1"
 alpaca-py = "^0.39.4"
 python-dotenv = "^1.0.1"
-firebase-admin = "^6.5.0"
+firebase-admin = "^6.8.0"
 requests-cache = "^1.2.1"
 requests-ratelimiter = "^0.7.0"
 
