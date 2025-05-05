@@ -2,14 +2,14 @@
 
 [[package]]
 name = "alpaca-py"
-version = "0.39.4"
+version = "0.40.0"
 description = "The Official Python SDK for Alpaca APIs"
 optional = false
 python-versions = "<4.0.0,>=3.8.0"
 groups = ["main"]
 files = [
-    {file = "alpaca_py-0.39.4-py3-none-any.whl", hash = "sha256:1628d69134cbe0296dbac291955a40d73defd1f05b5a7cc50f476ed20c9d0ea6"},
-    {file = "alpaca_py-0.39.4.tar.gz", hash = "sha256:0b6c71c1876e2dcf4b3eb1a03c2565c0aa88aa73830e26539db1d33777106c20"},
+    {file = "alpaca_py-0.40.0-py3-none-any.whl", hash = "sha256:6484bfa77d0d974d62b170b8a42d9d351737bf03d03e23d36214b663554ef339"},
+    {file = "alpaca_py-0.40.0.tar.gz", hash = "sha256:7cf11193b467e902b1f2fa3449e287ad85b1921258340995c371a3751ba130f6"},
 ]
 
 [package.dependencies]
@@ -4531,4 +4531,4 @@ repair = ["scipy (>=1.6.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "58b5a7aa92bea29989f614e1dc04b6f53f998417286ded927412c928f217e014"
+content-hash = "a70327621f5ecbd6c1de35232d76ad9384ad471b5a82595872d4972409f565a9"
