@@ -4530,14 +4530,14 @@ files = [
 
 [[package]]
 name = "yfinance"
-version = "0.2.58"
+version = "0.2.60"
 description = "Download market data from Yahoo! Finance API"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "yfinance-0.2.58-py2.py3-none-any.whl", hash = "sha256:b8572ac086ae24259e6b3d967b949bf4e6783e72fda9ea5d0926b69b8b410852"},
-    {file = "yfinance-0.2.58.tar.gz", hash = "sha256:4bf61714544aa57f82b9c157c17f40ede53ec70ce9a0ec170661a9cba737cbe2"},
+    {file = "yfinance-0.2.60-py2.py3-none-any.whl", hash = "sha256:b2b740b60d16ba28f05f88a99dde1df69975d6d0b09c382b1a91009c8859bd10"},
+    {file = "yfinance-0.2.60.tar.gz", hash = "sha256:54977f209fd1a376cd13c38e2f37c92a6c4a3ce374aee281aba879b0d45633cc"},
 ]
 
 [package.dependencies]
@@ -4549,8 +4549,10 @@ numpy = ">=1.16.5"
 pandas = ">=1.3.0"
 peewee = ">=3.16.2"
 platformdirs = ">=2.0.0"
+protobuf = ">=3.19.0"
 pytz = ">=2022.5"
 requests = ">=2.31"
+websockets = ">=13.0"
 
 [package.extras]
 nospam = ["requests_cache (>=1.0)", "requests_ratelimiter (>=0.3.1)"]
@@ -4559,4 +4561,4 @@ repair = ["scipy (>=1.6.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "8394aadb8373059e2e1ea4c5d6763ff41695f6cf4fc2048942463b626dfa77da"
+content-hash = "852d3a97326ef224f228bbbe58438f399dd75edafd831b5fd693dd91918128d1"
