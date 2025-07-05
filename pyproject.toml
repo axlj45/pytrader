@@ -9,7 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 numpy = "^2.2.5"
-joblib = "^1.5.0"
+joblib = "^1.5.1"
 pandas = "^2.2.2"
 pandas-datareader = "^0.10.0"
 scikit-learn = "^1.6.1"
