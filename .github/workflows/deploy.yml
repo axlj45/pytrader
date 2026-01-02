@@ -1,0 +1,59 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: "Target environment"
+        required: true
+        options: [dev, prod]
+      tag:
+        type: string
+        description: "Release tag to deploy (e.g. v1.4.2)"
+        required: true
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, deploy]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup tools
+        shell: bash
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install ansible
+          sudo apt-get update -y || true
+          sudo apt-get install -y jq || true
+
+      - name: Download release artifacts (wheel) for tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag }}"
+          mkdir -p dist
+          # Use GitHub CLI (preinstalled on many runners; if not, install it)
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "gh CLI not found. Install gh on the deploy runner for best results."
+            exit 1
+          fi
+          gh release download "$TAG" --dir dist --pattern "*.whl"
+          ls -la dist
+          WHEEL=$(ls dist/*.whl | head -n 1)
+          echo "WHEEL=$WHEEL" >> "$GITHUB_ENV"
+
+      - name: Deploy via Ansible
+        env:
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+        shell: bash
+        run: |
+          echo "$ANSIBLE_VAULT_PASSWORD" > /tmp/.vault_pass
+          VERSION="${{ inputs.tag }}"
+          VERSION="${VERSION#v}"
+
+          ansible-playbook -i ansible/inventory/${{ inputs.environment }}/hosts.ini \
+            ansible/playbooks/site.yml \
+            --extra-vars "pytrader_version=${VERSION} pytrader_wheel_src=${WHEEL}" \
+            --vault-password-file /tmp/.vault_pass

@@ -1,0 +1,10 @@
+[Unit]
+Description=Run PyTrader Evaluator daily
+
+[Timer]
+OnCalendar={{ pytrader_evaluate_oncalendar }}
+RandomizedDelaySec={{ pytrader_evaluate_delay_sec }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

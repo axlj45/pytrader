@@ -1,0 +1,8 @@
+- name: Systemd daemon-reload
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart pytrader monitor
+  ansible.builtin.systemd:
+    name: pytrader-monitor.service
+    state: restarted

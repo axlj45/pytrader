@@ -1,0 +1,26 @@
+pytrader_user: pytrader
+pytrader_group: pytrader
+
+pytrader_root: /opt/pytrader
+pytrader_releases: "{{ pytrader_root }}/releases"
+pytrader_current: "{{ pytrader_root }}/current"
+
+pytrader_version: "1.4.2"          # override from workflow
+pytrader_wheel_src: ""              # local path on runner -> copied to host
+
+pytrader_python_bin: python3
+
+# Scheduling (systemd timers)
+pytrader_scrape_oncalendar: "daily"
+pytrader_evaluate_oncalendar: "daily"
+pytrader_evaluate_delay_sec: 1800    # 30m after scrape, pragmatic default
+
+# Runtime config
+pytrader_env_path: /etc/pytrader/pytrader.env
+pytrader_log_level: INFO
+pytrader_live: "false"               # "true"/"false" strings for EnvironmentFile use
+
+# OTEL (collector on localhost)
+otel_service_env: "prod"
+otel_otlp_endpoint: "http://127.0.0.1:4318"
+otel_headers: ""                     # e.g. "Authorization=Bearer xxx"

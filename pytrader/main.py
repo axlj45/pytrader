@@ -10,11 +10,29 @@ from pytrader.utils import localtime, TradeConfig
 from pytrader.utils.need_something_better import _df_row_to_signal, _get_trade_key
 
 
+from logging.handlers import RotatingFileHandler
+
+
+def _configure_logging(log_level: str, log_path: str | None):
+    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+
+    handlers = [logging.StreamHandler()]
+
+    if log_path:
+        handlers.append(RotatingFileHandler(log_path, maxBytes=10_000_000, backupCount=3))
+
+    logging.basicConfig(
+        level=numeric_level,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        handlers=handlers,
+    )
+
+
 @click.group()
 @click.pass_context
 @click.option("-c", "--config", default=None, help="Path to configuration file.")
 @click.option("-l", "--live", is_flag=True, help="Execute against live account.")
-@click.option("-o", "--log-path", default="pytrader.log", help="Path to write log file.")
+@click.option("-o", "--log-path", default=None, help="Optional log file path (default: stdout only).")
 @click.option(
     "-v",
     "--log-level",
@@ -33,14 +51,8 @@ from pytrader.utils.need_something_better import _df_row_to_signal, _get_trade_k
     show_default=True,
     help="Set log level",
 )
-def cli(ctx: click.Context, config: str, live: bool, log_path: str, log_level: str):
-    numeric_level = getattr(logging, log_level.upper(), None)
-
-    logging.basicConfig(
-        level=numeric_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.FileHandler(log_path), logging.StreamHandler()],
-    )
+def cli(ctx: click.Context, config: str, live: bool, log_path: str | None, log_level: str):
+    _configure_logging(log_level, log_path)
 
     ctx.ensure_object(dict)
     cfg = TradeConfig(config)
@@ -52,7 +64,7 @@ def cli(ctx: click.Context, config: str, live: bool, log_path: str, log_level: s
 @cli.command()
 @click.pass_context
 @click.option("--refresh", is_flag=True, help="Force refresh of RSI signals.")
-def rsi(ctx: click.Context, refresh: bool):
+def scrape(ctx: click.Context, refresh: bool):
     """Calculate RSI signals for all tickers in the S&P 500."""
     signals_by_symbol = rsi_signals(refresh)
     broker: AlpacaClient = ctx.obj["broker"]
@@ -160,7 +172,7 @@ def rsi(ctx: click.Context, refresh: bool):
 
 @cli.command()
 @click.pass_context
-def process_signals(ctx: click.Context):
+def process(ctx: click.Context):
     """Process RSI signals and execute trades."""
     broker: AlpacaClient = ctx.obj["broker"]
     db: TraderDatabase = ctx.obj["db"]
@@ -229,7 +241,7 @@ def process_signals(ctx: click.Context):
 
 @cli.command()
 @click.pass_context
-def monitor_orders(ctx: click.Context):
+def monitor(ctx: click.Context):
     """Monitor open orders and execute stop losses."""
     db: TraderDatabase = ctx.obj["db"]
     broker: AlpacaClient = ctx.obj["broker"]
