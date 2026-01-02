@@ -1,0 +1,9 @@
+[Unit]
+Description=Run PyTrader Data Scraper daily
+
+[Timer]
+OnCalendar={{ pytrader_scrape_oncalendar }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

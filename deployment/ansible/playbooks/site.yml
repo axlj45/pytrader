@@ -1,0 +1,4 @@
+- hosts: pytrader_hosts
+  become: true
+  roles:
+    - role: pytrader_app

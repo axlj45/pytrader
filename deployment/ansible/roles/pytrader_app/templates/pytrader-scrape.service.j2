@@ -1,0 +1,15 @@
+[Unit]
+Description=PyTrader Data Scraper (daily)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User={{ pytrader_user }}
+Group={{ pytrader_group }}
+EnvironmentFile={{ pytrader_env_path }}
+WorkingDirectory={{ pytrader_current }}
+ExecStart={{ pytrader_current }}/venv/bin/pytrader scrape --log-level ${PYTRADER_LOG_LEVEL}
+
+StandardOutput=journal
+StandardError=journal

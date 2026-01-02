@@ -1,0 +1,117 @@
+- name: Ensure group
+  ansible.builtin.group:
+    name: "{{ pytrader_group }}"
+    system: true
+
+- name: Ensure user
+  ansible.builtin.user:
+    name: "{{ pytrader_user }}"
+    group: "{{ pytrader_group }}"
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: Install OS packages (Debian/Ubuntu)
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-venv
+      - ca-certificates
+    update_cache: true
+  when: ansible_os_family == "Debian"
+
+- name: Install OS packages (Rocky/RedHat)
+  ansible.builtin.dnf:
+    name:
+      - python3
+      - ca-certificates
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Create directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ pytrader_user }}"
+    group: "{{ pytrader_group }}"
+    mode: "0755"
+  loop:
+    - "{{ pytrader_root }}"
+    - "{{ pytrader_releases }}"
+    - "/etc/pytrader"
+
+- name: Release dir
+  ansible.builtin.file:
+    path: "{{ pytrader_releases }}/{{ pytrader_version }}"
+    state: directory
+    owner: "{{ pytrader_user }}"
+    group: "{{ pytrader_group }}"
+    mode: "0755"
+
+- name: Copy wheel to host
+  ansible.builtin.copy:
+    src: "{{ pytrader_wheel_src }}"
+    dest: "{{ pytrader_releases }}/{{ pytrader_version }}/pytrader-{{ pytrader_version }}.whl"
+    owner: "{{ pytrader_user }}"
+    group: "{{ pytrader_group }}"
+    mode: "0644"
+  when: pytrader_wheel_src | length > 0
+
+- name: Create venv
+  ansible.builtin.command:
+    cmd: "{{ pytrader_python_bin }} -m venv {{ pytrader_releases }}/{{ pytrader_version }}/venv"
+    creates: "{{ pytrader_releases }}/{{ pytrader_version }}/venv/bin/python"
+  become_user: "{{ pytrader_user }}"
+
+- name: Install wheel into venv
+  ansible.builtin.command:
+    cmd: "{{ pytrader_releases }}/{{ pytrader_version }}/venv/bin/pip install --upgrade {{ pytrader_releases }}/{{ pytrader_version }}/pytrader-{{ pytrader_version }}.whl"
+  become_user: "{{ pytrader_user }}"
+
+- name: Update current symlink
+  ansible.builtin.file:
+    src: "{{ pytrader_releases }}/{{ pytrader_version }}"
+    dest: "{{ pytrader_current }}"
+    state: link
+    force: true
+
+- name: Render env file
+  ansible.builtin.template:
+    src: pytrader.env.j2
+    dest: "{{ pytrader_env_path }}"
+    owner: root
+    group: "{{ pytrader_group }}"
+    mode: "0640"
+  notify:
+    - Restart pytrader monitor
+
+- name: Install systemd unit files
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item | regex_replace('\\.j2$', '') }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - pytrader-monitor.service.j2
+    - pytrader-scrape.service.j2
+    - pytrader-scrape.timer.j2
+    - pytrader-evaluate.service.j2
+    - pytrader-evaluate.timer.j2
+  notify:
+    - Systemd daemon-reload
+
+- name: Enable and start monitor
+  ansible.builtin.systemd:
+    name: pytrader-monitor.service
+    enabled: true
+    state: started
+
+- name: Enable timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - pytrader-scrape.timer
+    - pytrader-evaluate.timer
